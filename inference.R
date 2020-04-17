@@ -1,4 +1,4 @@
-########
+##########
 # Code for paper comparing precise to bounded probability 
 # Ivette Raices Cruz, Matthias C M Troffaes, Ullrika Sahlin
 # 17 april 2020
@@ -253,58 +253,36 @@ prob_consumption
 ##########################################################################################
   ## Bounded probability 
  
-  ### parameters = c(concentration_mu0, consumption_mu0)
+  ### initial_mu0 = c(concentration_mu0, consumption_mu0)
 
-  obj_func_exp <- function(parameters, niter_ale = 1000, niter_epi = 1000, 
+  obj_func <- function(parameters, niter_ale = 1000, niter_epi = 1000, 
                        data_concentration = log_concentration_ss_data, 
                        concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                        data_consumption = log_consumption_ss_data,
                        consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                       gen_data_EKE = gen_eke, th = 0.5, percentile){
+                       gen_data_EKE = gen_eke, th = 0.5, percentile, output_exp = 'TRUE'){
     
     concentration_mu0 <- parameters[1] 
     consumption_mu0 <- parameters[2] 
     
-    out <- final_assessment(niter_ale = 1000, niter_epi= 1000, data_concentration = log_concentration_ss_data, 
+    out <- do_assessment(niter_ale = 1000, niter_epi= 1000, data_concentration = log_concentration_ss_data, 
                               concentration_mu0 = concentration_mu0, concentration_v0 = concentration_v0, 
                               concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0, 
                               data_consumption = log_consumption_ss_data,
                               consumption_mu0 = consumption_mu0, consumption_v0 =  consumption_v0, 
                               consumption_alpha0 = consumption_alpha0, consumption_beta0 = consumption_beta0, 
                               gen_data_EKE = gen_data_EKE, th = th, percentile = percentile)
-      
-    expected_prob_exceed <- out$expected_prob_exceed
-    #percentile_prob_exceed <- out$percentile_prob_exceed[[1]]
     
-    return(expected_prob_exceed)
+    if(output_exp == 'TRUE'){
+      output <- out$expected_prob_exceed
+    }
+    else{
+      output <- out$percentile_prob_exceed[[1]]
+    }
+    return(output)
   }
  
   
-  obj_func_perc <- function(parameters, niter_ale = 1000, niter_epi = 1000, 
-                       data_concentration = log_concentration_ss_data, 
-                       concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                       data_consumption = log_consumption_ss_data,
-                       consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                       gen_data_EKE = gen_eke, th = 0.5, percentile){
-    
-    concentration_mu0 <- parameters[1] 
-    consumption_mu0 <- parameters[2] 
-    
-    out <- final_assessment(niter_ale = 1000, niter_epi= 1000, data_concentration = log_concentration_ss_data, 
-                              concentration_mu0 = concentration_mu0, concentration_v0 = concentration_v0, 
-                              concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0, 
-                              data_consumption = log_consumption_ss_data,
-                              consumption_mu0 = consumption_mu0, consumption_v0 =  consumption_v0, 
-                              consumption_alpha0 = consumption_alpha0, consumption_beta0 = consumption_beta0, 
-                              gen_data_EKE = gen_data_EKE, th = th, percentile = percentile)
-      
-    #expected_prob_exceed <- out$expected_prob_exceed
-    percentile_prob_exceed <- out$percentile_prob_exceed[[1]]
-    
-    return(percentile_prob_exceed)
-  }
-  
-
   graph_bp = function(lower_points, upper_points, min_exp, max_exp){
     
     l = length(lower_points)
@@ -334,101 +312,111 @@ prob_consumption
   }
   
 #####################################################################
-   
+  ### initial_mu0 = c(concentration_mu0, consumption_mu0)
   initial_mu0 = c(5.75, 0.75)
   
-  argmin_max_mean = nmkb(par = initial_mu0, fn = obj_func_mean,  lower = c(1, -5), upper = c(6, 1),
+  argmin_upper_exp = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     control = list(maximize = TRUE),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = log_concentration_ss_data, 
                     concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                     data_consumption = log_consumption_ss_data,
                     consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95)
+                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95, output_exp = 'TRUE')
    
-   argmin_max_perc = nmkb(par = initial_mu0, fn = obj_func_perc,  lower = c(1, -5), upper = c(6, 1),
+   argmin_upper_perc = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     control = list(maximize = TRUE),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = log_concentration_ss_data, 
                     concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                     data_consumption = log_consumption_ss_data,
                     consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95)
+                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95, output_exp = 'FALSE')
    
+   ############
+   ### initial_mu0 = c(concentration_mu0, consumption_mu0)
    initial_mu0 = c(2.75, -2.5)
    
-   argmin_min_mean = nmkb(par = parameters, fn = obj_func_mean,  lower = c(1, -5), upper = c(6, 1),
+   argmin_lower_exp = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = log_concentration_ss_data, 
                     concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                     data_consumption = log_consumption_ss_data,
                     consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95)
+                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95, output_exp = 'TRUE')
    
 
-   argmin_min_perc = nmkb(par = parameters, fn = obj_func_perc,  lower = c(1, -5), upper = c(6, 1),
+   argmin_lower_perc = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = log_concentration_ss_data, 
                     concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                     data_consumption = log_consumption_ss_data,
                     consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95)
+                    gen_data_EKE = gen_eke, th = 0.5, percentile = 95, output_exp = 'FALSE')
    
    #################
    percentiles = seq(1,99, by = 1)
 
-   parameters = c(5.75, 0.75)
+   initial_mu0 = c(5.75, 0.75)
    
-   upper_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = parameters, fn = obj_func_perc,  lower = c(1, -5), upper = c(6, 1),
+   upper_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                         control = list(maximize = TRUE),
                         niter_ale = 1000, niter_epi = 1000, 
                         data_concentration = log_concentration_ss_data, 
                         concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                         data_consumption = log_consumption_ss_data,
                         consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                        gen_data_EKE = gen_eke, th = 0.5)
+                        gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
-   save(max_values, file = 'max_values_bp.Rdata')
+   save(upper_bound_perc, file = 'upper_bound_perc_bp.Rdata')
+   load('upper_bound_perc_bp.Rdata')
    
-   upper_bound_perc <- lapply(c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99), nmkb, par = parameters, fn = obj_func_perc,  lower = c(1, -5), upper = c(6, 1),
+   percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
+   
+   upper_bound_perc1 <- lapply(percentiles_1, nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                             control = list(maximize = TRUE),
                             niter_ale = 1000, niter_epi = 1000, 
                             data_concentration = log_concentration_ss_data, 
                             concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                             data_consumption = log_consumption_ss_data,
                             consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                            gen_data_EKE = gen_eke, th = 0.5)
+                            gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
-   save(max_values_per, file = 'max_values_percentiles_bp.Rdata')
-   
+   save(upper_bound_perc1, file = 'upper_bound_perc1_bp.Rdata')
+   load('upper_bound_perc1_bp.Rdata')
    ####
    
-   parameters = c(2.75, -2.5)
+   initial_mu0 = c(2.75, -2.5)
    
-   min_values <- lapply(c(1,5,25,50,75,95,99), nmkb, par = parameters, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+   lower_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0 , fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                         control = list(maximize = FALSE),
                         niter_ale = 1000, niter_epi = 1000, 
                         data_concentration = log_concentration_ss_data, 
                         concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                         data_consumption = log_consumption_ss_data,
                         consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                        gen_data_EKE = gen_eke, th = 0.5)
+                        gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
   
-   save(min_values, file = 'min_values_bp.Rdata')
+   save(lower_bound_perc , file = 'lower_bound_perc_bp.Rdata')
+   load('lower_bound_perc_bp.Rdata')
    
+   percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
    
-   min_values_per <- lapply(c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99), nmkb, par = parameters, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+   lower_bound_perc1 <- lapply(percentiles_1, nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                             control = list(maximize = FALSE),
                             niter_ale = 1000, niter_epi = 1000, 
                             data_concentration = log_concentration_ss_data, 
                             concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                             data_consumption = log_consumption_ss_data,
                             consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                            gen_data_EKE = gen_eke, th = 0.5)
+                            gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
-   save(min_values_per, file = 'min_values_percentiles_bp.Rdata')
+   save(lower_bound_perc1, file = 'lower_bound_perc1_bp.Rdata')
+   load('lower_bound_perc1_bp.Rdata')
    
-   load('min_values_percentiles_bp.Rdata')
+   ## extract the values corresponding to percentiles_1
    
-  min_valss <- unlist(lapply(min_values_per, function(x){x$value}))
-   
+   upper_vals <- unlist(lapply(upper_bound_perc1, function(x){x$value}))
+   lower_vals <- unlist(lapply(lower_bound_perc1, function(x){x$value}))
+    
+  
