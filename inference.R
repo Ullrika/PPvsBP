@@ -10,6 +10,7 @@ library('dfoptim')
 
 ####################################################
 ## Load data 
+#**US to IR: Put all data into one R.data file
 load('EKE_change_cons.Rdata')
 load('log_concentration_ss_data.Rdata')
 load('log_consumption_ss_data.Rdata')
@@ -18,6 +19,7 @@ load('consumers_info_sample_size.Rdata')
 ###################################################
 ## Parametric inference quantifying epistemic uncertainty by bounded probability
 
+#**US to IR: Call the function update_normal_gamma, allow for data being a vector or sufficient summary statistics
 ## Functions 
 {
   ## https://en.wikipedia.org/wiki/Conjugate_prior
@@ -57,6 +59,11 @@ load('consumers_info_sample_size.Rdata')
 
   ################################################################################
   ## sufficient statistics (sample mean and sample variance) for the normal likelihood are known for log-aluminium concentration and log-consumption 
+  
+  #**US to IR: It is a bit difficult to understand what this function is doing. 
+  #You are basically applying the updating on all chochlate products and generate samples from the variables (in a sense this is propagation (but only one variable))
+  #I suggest you make a function using post as input argument that returns a sample of the variable.
+  #then we just do lapply in the assessment later on
   
   quantify_uncertainty_normal <- function(niter_ale, data, mu0 = 1, v0 = 5, alpha0 = 1, beta0 = 1){
        fun <- function(k){
@@ -124,7 +131,7 @@ load('consumers_info_sample_size.Rdata')
   
   ################################################################################
   ## Propagation of uncertainty
-  
+  #**US to IR: This function could be called "combine_uncertainty"
   propagate_uncertainty <- function(gen_data_concentration, gen_data_consumption, 
                                        gen_data_EKE, th = 0.5, niter_ale){
     
@@ -160,6 +167,9 @@ load('consumers_info_sample_size.Rdata')
   
   ###############################################################################
   ## Final assessment model -- Precise Probability 
+  #**US to IR: This is the uncertainty analysis on the assessment, I 
+  #suggest to put everything that is fixed inside the function, and clarify what is changeable
+  #I.e. niter_ale, inter_epi, threshold, percentile_ale
   
   do_assessment <- function(niter_ale = 1000, niter_epi = 1000, data_concentration, 
                               concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
@@ -207,8 +217,7 @@ load('consumers_info_sample_size.Rdata')
   }
   
  ###################################################################################
-  ## Figures
-  
+  ## Figures  
   graph_plot_pp = function(assessment_output){
     w <- 0
     plot(sort(assessment_output$prob_exceed),(1:length(assessment_output$prob_exceed))/(length(assessment_output$prob_exceed)), 
@@ -225,6 +234,7 @@ load('consumers_info_sample_size.Rdata')
 #########################################################################################################################################
 #########################################################################################################################################
 ## Precise probability
+#**US to IR: The rows from here to final assessmen - shouldnt these be put inside the function for final assessment
 
 ## Probability of a child i consumes chocolate product k
 param_consumption = lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = 1, beta0 = 1)
@@ -248,7 +258,7 @@ prob_consumption
                              gen_data_EKE = gen_eke, th = 0.5, percentile = 95)
   
   
-  graph_plot_pp(assessment_output = TWI_pp)
+  save(TWI_pp, file='TWI_pp.Rdata')
   
 ##########################################################################################
   ## Bounded probability 
@@ -369,7 +379,6 @@ prob_consumption
                         gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
    save(upper_bound_perc, file = 'upper_bound_perc_bp.Rdata')
-   load('upper_bound_perc_bp.Rdata')
    
    percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
    
@@ -383,7 +392,6 @@ prob_consumption
                             gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
    save(upper_bound_perc1, file = 'upper_bound_perc1_bp.Rdata')
-   load('upper_bound_perc1_bp.Rdata')
    ####
    
    initial_mu0 = c(2.75, -2.5)
@@ -398,7 +406,6 @@ prob_consumption
                         gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
   
    save(lower_bound_perc , file = 'lower_bound_perc_bp.Rdata')
-   load('lower_bound_perc_bp.Rdata')
    
    percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
    
@@ -412,11 +419,19 @@ prob_consumption
                             gen_data_EKE = gen_eke, th = 0.5, output_exp = 'FALSE')
    
    save(lower_bound_perc1, file = 'lower_bound_perc1_bp.Rdata')
-   load('lower_bound_perc1_bp.Rdata')
    
    ## extract the values corresponding to percentiles_1
    
    upper_vals <- unlist(lapply(upper_bound_perc1, function(x){x$value}))
    lower_vals <- unlist(lapply(lower_bound_perc1, function(x){x$value}))
     
+  ## Visualizations
+load('TWI_pp.Rdata')
+graph_plot_pp(assessment_output = TWI_pp)
   
+   
+load('upper_bound_perc_bp.Rdata')
+load('upper_bound_perc1_bp.Rdata')
+load('lower_bound_perc_bp.Rdata')
+load('lower_bound_perc1_bp.Rdata')
+graph_bp...
