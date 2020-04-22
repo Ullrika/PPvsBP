@@ -42,7 +42,7 @@ load('data_assessment.Rdata')
     mu_n <- (v0 * mu0 + n * m ) / (v0 + n)
     beta_n <- beta0 + 1/2*S2*(n - 1) + (n*v0/(v0 + n) * (m - mu0)^2)
       
-    output = list(data = data, param = list(prior = list(mu = mu0, v = v0, alpha = alpha0, beta = beta0),
+    output <- list(data = data, param = list(prior = list(mu = mu0, v = v0, alpha = alpha0, beta = beta0),
                                             posterior = list(mu = mu_n, v = v_n , alpha = alpha_n, beta = beta_n)))
       
     return(output)
@@ -51,13 +51,13 @@ load('data_assessment.Rdata')
   ## Bernoulli-Beta conjugate model (Bayesian inference). 
   
   update_bernoulli_beta <- function(data, alpha0 = 1, beta0 = 1){
-    n_non_consumer = data[['non_consumer_sample_size']]
-    n_consumer = data[['consumer_sample_size']]
+    n_non_consumer <- data[['non_consumer_sample_size']]
+    n_consumer <- data[['consumer_sample_size']]
     
-    alpha_n = alpha0 + n_consumer
-    beta_n = beta0 + n_non_consumer
+    alpha_n <- alpha0 + n_consumer
+    beta_n <- beta0 + n_non_consumer
     
-    output = list(data = data, param = list(prior = list(alpha = alpha0, beta = beta0),
+    output <- list(data = data, param = list(prior = list(alpha = alpha0, beta = beta0),
                                             posterior = list(alpha = alpha_n, beta = beta_n)))
     
     return(output)
@@ -99,38 +99,38 @@ load('data_assessment.Rdata')
     change_cocoa_dist <- SHELF::fitdist(vals = vals, probs = probs, lower = min(vals) - 0.5 , upper = max(vals) + 0.5 )
     best_fit <- toString(change_cocoa_dist$best.fitting$best.fit)
     if(best_fit == "normal"){
-      mean = change_cocoa_dist$Normal$mean
-      sd = change_cocoa_dist$Normal$sd
-      param = c(mean = mean, sd = sd)
+      mean <-  change_cocoa_dist$Normal$mean
+      sd <-  change_cocoa_dist$Normal$sd
+      param <-  c(mean = mean, sd = sd)
     }
     if(best_fit == "t"){
-      location = change_cocoa_dist$Student.t$location 
-      scale = change_cocoa_dist$Student.t$scale
-      df = change_cocoa_dist$Student.t$df
-      param = c(location = location, scale = scale, df = df)
+      location <-  change_cocoa_dist$Student.t$location 
+      scale <-  change_cocoa_dist$Student.t$scale
+      df <-  change_cocoa_dist$Student.t$df
+      param <-  c(location = location, scale = scale, df = df)
     }
     if(best_fit == "gamma"){
-      shape = change_cocoa_dist$Gamma$shape
-      rate  = change_cocoa_dist$Gamma$rate
-      param = c(shape = shape, rate = rate)
+      shape <-  change_cocoa_dist$Gamma$shape
+      rate  <-  change_cocoa_dist$Gamma$rate
+      param <-  c(shape = shape, rate = rate)
     }
     if(best_fit == "lognormal"){
-      mean.log.X  = change_cocoa_dist$Log.normal$mean.log.X 
-      sd.log.X = change_cocoa_dist$Log.normal$sd.log.X
-      param = c(mean.log.X = mean.log.X, sd.log.X = sd.log.X)
+      mean.log.X  <-  change_cocoa_dist$Log.normal$mean.log.X 
+      sd.log.X <-  change_cocoa_dist$Log.normal$sd.log.X
+      param <-  c(mean.log.X = mean.log.X, sd.log.X = sd.log.X)
     }
     if(best_fit == "logt"){
-      location.log.X = change_cocoa_dist$Log.Student.t$location.log.X
-      scale.log.X = change_cocoa_dist$Log.Student.t$scale.log.X
-      df.log.X = change_cocoa_dist$Log.Student.t$df.log.X
-      param = c(location.log.X = location.log.X, scale.log.X = scale.log.X,  df.log.X =  df.log.X)
+      location.log.X <-  change_cocoa_dist$Log.Student.t$location.log.X
+      scale.log.X <-  change_cocoa_dist$Log.Student.t$scale.log.X
+      df.log.X <-  change_cocoa_dist$Log.Student.t$df.log.X
+      param <-  c(location.log.X = location.log.X, scale.log.X = scale.log.X,  df.log.X =  df.log.X)
     }
     if(best_fit == "beta"){
-      shape1 = change_cocoa_dist$Beta$shape1
-      shape2 = change_cocoa_dist$Beta$shape2
-      param = c(shape1 = shape1, shape2 = shape2)
+      shape1 <-  change_cocoa_dist$Beta$shape1
+      shape2 <-  change_cocoa_dist$Beta$shape2
+      param <-  c(shape1 = shape1, shape2 = shape2)
     }
-    output = list(vals = vals, best_fit = best_fit, param = param)
+    output <-  list(vals = vals, best_fit = best_fit, param = param)
     return(output)
   }
   
@@ -138,77 +138,81 @@ load('data_assessment.Rdata')
   ## Combination of uncertainty
 
   combine_uncertainty <- function(gen_data_concentration, gen_data_consumption, 
-                                       gen_data_EKE, threshold = 0.5, niter_ale){
+                                  gen_data_EKE, threshold = 0.5, niter_ale, percentile_ale){
     
     gen_data_concentration <- matrix(unlist(gen_data_concentration), ncol = 7, nrow = niter_ale)
     gen_data_consumption <- matrix(unlist(gen_data_consumption), ncol = 7, nrow = niter_ale)
-        
+    
     weekly_intake <- rowSums(gen_data_EKE * (gen_data_consumption * 0.007) * gen_data_concentration)
     
     prob_exceed_wi <- mean(weekly_intake > threshold)
-   
-    return(prob_exceed_wi = prob_exceed_wi)
+    
+    high_consumer_weekly_intake <- quantile(weekly_intake, probs = percentile_ale/100)
+    
+    return(list(prob_exceed_wi = prob_exceed_wi, high_consumer_weekly_intake = high_consumer_weekly_intake[[1]]))
   }
-  
   
   ###############################################################################
   ## Final assessment model -- Precise Probability 
   #**US to IR: This is the uncertainty analysis on the assessment, I 
   #suggest to put everything that is fixed inside the function, and clarify what is changeable
   #I.e. niter_ale, niter_epi, threshold, percentile_ale
-  
+
   unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
-                                      threshold = 0.5, percentile_ale,
-                                      data_concentration, 
-                              concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
-                              concentration_beta0 = 1, suff_stat_concentration = TRUE,
-                              data_consumption,
-                              consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
-                              consumption_beta0 = 1, suff_stat_consumption = TRUE,
-                              consumers_info_sample_size, consumption_event_alpha0 = 1, 
-                              consumption_event_beta0 = 1,
-                              gen_data_EKE){
+                                      threshold = 0.5, percentile_ale = 95,
+                                      data_concentration, data_consumption, gen_data_EKE, consumers_info_sample_size,
+                                      concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
+                                      concentration_beta0 = 1, suff_stat_concentration = TRUE,
+                                      consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
+                                      consumption_beta0 = 1, suff_stat_consumption = TRUE,
+                                      consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
     
     nr_products <-  length(data_concentration)
     prob_consumption <- parameters_consumption <- parameters_concentration <- vector('list', nr_products)
     
     # Probability of a child i consumes chocolate product k
-    param_consumption = lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = consumption_event_alpha0, beta0 = consumption_event_beta0)
+    param_consumption <-  lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = consumption_event_alpha0, beta0 = consumption_event_beta0)
     
     for(k in 1:7){
-      prob_consumption[[k]] = rbeta(1,shape1 = param_consumption[[k]]$param$posterior$alpha, shape2 = param_consumption[[k]]$param$posterior$beta)
+      prob_consumption[[k]] <-  rbeta(1,shape1 = param_consumption[[k]]$param$posterior$alpha, shape2 = param_consumption[[k]]$param$posterior$beta)
     }
     
     prob_exceed <- rep(0, niter_epi)
     
-    post_concentration = lapply(data_concentration, update_normal_gamma, mu0 = concentration_mu0,
-                                       v0 = concentration_v0, alpha0 = concentration_alpha0, 
-                                       beta0 = concentration_beta0, suff_stat = suff_stat_concentration)
+    high_consumer_weekly_intake <- rep(0, niter_epi)
     
-    post_consumption = lapply(data_consumption, update_normal_gamma, mu0 = consumption_mu0, 
-                                     v0 = consumption_v0, alpha0 = consumption_alpha0, 
-                                     beta0 = consumption_beta0, suff_stat = suff_stat_consumption)
+    post_concentration <-  lapply(data_concentration, update_normal_gamma, mu0 = concentration_mu0,
+                                  v0 = concentration_v0, alpha0 = concentration_alpha0, 
+                                  beta0 = concentration_beta0, suff_stat = suff_stat_concentration)
+    
+    post_consumption <-  lapply(data_consumption, update_normal_gamma, mu0 = consumption_mu0, 
+                                v0 = consumption_v0, alpha0 = consumption_alpha0, 
+                                beta0 = consumption_beta0, suff_stat = suff_stat_consumption)
     for(j in 1:nr_products){
-      parameters_concentration[[j]] = post_concentration[[j]]$param
+      parameters_concentration[[j]] <-  post_concentration[[j]]$param
       
-      parameters_consumption[[j]] = post_consumption[[j]]$param
+      parameters_consumption[[j]] <-  post_consumption[[j]]$param
     }
-   
+    
     for(i in 1:niter_epi){
       
-      gen_data_concentration = lapply(post_concentration, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_concentration <-  lapply(post_concentration, propagate_normal_gamma, niter_ale = niter_ale)
       
-      gen_data_consumption = lapply(post_consumption, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_consumption <-  lapply(post_consumption, propagate_normal_gamma, niter_ale = niter_ale)
       
-      prob_exceed[i] <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
-                                 gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale)
-          
+      aux <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
+                                            gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale, percentile_ale)
+      
+      prob_exceed[[i]] = aux[[1]]
+      
+      high_consumer_weekly_intake[[i]] = aux[[2]]
+      
     }
     
     expected_prob_exceed <- mean(prob_exceed)
     hdi_prob_exceed <- hdi(prob_exceed, credMass = 0.95) # Highest (Posterior) Density Interval
-    #**US to IR: is this correct? 
-    percentile_prob_exceed = quantile(prob_exceed, probs = (percentile_ale/100)) 
+    
+    high_consumer_prob_exceed <- mean(high_consumer_weekly_intake > threshold)
     
     return(list(prob_consumption_event = prob_consumption,
                 parameters_concentration = parameters_concentration,
@@ -216,8 +220,10 @@ load('data_assessment.Rdata')
                 prob_exceed = prob_exceed, 
                 expected_prob_exceed = expected_prob_exceed,
                 hdi_prob_exceed = hdi_prob_exceed,
-                percentile_prob_exceed = percentile_prob_exceed))
+                high_consumer_weekly_intake = high_consumer_weekly_intake,
+                high_consumer_prob_exceed = high_consumer_prob_exceed))
   }
+  
   
  ###################################################################################
   ## Figures  
@@ -243,17 +249,18 @@ load('data_assessment.Rdata')
 
 ## Final assessment
   
-  TWI_pp <-  unc_analysis_assessment (niter_ale = 10000, niter_epi = 10000, data_concentration = data_assessment$log_concentration_ss_data, 
-                                      concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1,
-                                      concentration_beta0 = 1, suff_stat_concentration = TRUE,
-                                      data_consumption = data_assessment$log_consumption_ss_data,
-                                      consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
-                                      consumption_beta0 = 1, suff_stat_consumption = TRUE,
-                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size, consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                                      gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95)
+  TWI_pp <-  unc_analysis_assessment(niter_ale = 100, niter_epi = 100, threshold = 0.5, percentile_ale = 95,
+                                     data_concentration = data_assessment$log_concentration_ss_data, 
+                                     data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
+                                     consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                                     concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
+                                     concentration_beta0 = 1, suff_stat_concentration = TRUE,
+                                     consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
+                                     consumption_beta0 = 1, suff_stat_consumption = TRUE,
+                                     consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
   
   
-  save(TWI_pp, file='TWI_pp.Rdata')
+  save(TWI_pp, file = 'TWI_pp.Rdata')
   
 ##########################################################################################
   ## Bounded probability 
@@ -296,15 +303,15 @@ load('data_assessment.Rdata')
   }
  
   
-  graph_bp = function(lower_points, upper_points, min_exp, max_exp){
+  graph_bp <- function(lower_points, upper_points, min_exp, max_exp){
     
-    l = length(lower_points)
-    l_points = rep(0,l)
-    u_points = rep(0,l)
+    l <- length(lower_points)
+    l_points <- rep(0,l)
+    u_points <- rep(0,l)
     
     for(i in 1:l){
-      l_points[i] = min(lower_points[i],upper_points[i]) 
-      u_points[i] = max(lower_points[i],upper_points[i])
+      l_points[i] <- min(lower_points[i],upper_points[i]) 
+      u_points[i] <- max(lower_points[i],upper_points[i])
     }
     
     par(mfrow = c(1,1))
@@ -326,9 +333,9 @@ load('data_assessment.Rdata')
   
 #####################################################################
   ### initial_mu0 = c(concentration_mu0, consumption_mu0)
-  initial_mu0 = c(5.75, 0.75)
+  initial_mu0 <- c(5.75, 0.75)
   
-  argmin_upper_exp = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+  argmin_upper_exp <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     control = list(maximize = TRUE),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = data_assessment$log_concentration_ss_data, 
@@ -341,7 +348,7 @@ load('data_assessment.Rdata')
                     consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
                     gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'TRUE')
    
-   argmin_upper_perc = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+   argmin_upper_perc <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                     control = list(maximize = TRUE),
                     niter_ale = 1000, niter_epi = 1000, 
                     data_concentration = data_assessment$log_concentration_ss_data, 
@@ -355,10 +362,10 @@ load('data_assessment.Rdata')
                     gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'FALSE')
    
    ############
-   ### initial_mu0 = c(concentration_mu0, consumption_mu0)
-   initial_mu0 = c(2.75, -2.5)
+   ### initial_mu0 <- c(concentration_mu0, consumption_mu0)
+   initial_mu0 <- c(2.75, -2.5)
    
-   argmin_lower_exp = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+   argmin_lower_exp <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                            control = list(maximize = FALSE),
                            niter_ale = 1000, niter_epi = 1000, 
                            data_concentration = data_assessment$log_concentration_ss_data, 
@@ -372,7 +379,7 @@ load('data_assessment.Rdata')
                            gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'TRUE')
    
 
-   argmin_lower_perc = nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
+   argmin_lower_perc <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                             control = list(maximize = FALSE),
                             niter_ale = 1000, niter_epi = 1000, 
                             data_concentration = data_assessment$log_concentration_ss_data, 
@@ -386,9 +393,9 @@ load('data_assessment.Rdata')
                             gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'FALSE')
    
    #################
-   percentiles = seq(1,99, by = 1)
+   percentiles <- seq(1,99, by = 1)
 
-   initial_mu0 = c(5.75, 0.75)
+   initial_mu0 <- c(5.75, 0.75)
    
    upper_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                         control = list(maximize = TRUE),
@@ -423,7 +430,7 @@ load('data_assessment.Rdata')
    save(upper_bound_perc1, file = 'upper_bound_perc1_bp.Rdata')
    ####
    
-   initial_mu0 = c(2.75, -2.5)
+   initial_mu0 <- c(2.75, -2.5)
    
    lower_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0 , fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
                         control = list(maximize = FALSE),
