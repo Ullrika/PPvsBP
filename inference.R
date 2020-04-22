@@ -67,13 +67,18 @@ load('data_assessment.Rdata')
   ## post refers to the parameters of the posterior distribution -- normal-gamma 
   ## niter_ale refers to the number of generated samples  
   
-  propagate_normal_gamma <- function(niter_ale, post){
+  propagate_normal_gamma <- function(niter_ale, post, percentile_ale){
   
     precision <- rgamma(1, shape = post$param$posterior$alpha, rate = post$param$posterior$beta)  # precision
     sigma_n <- (1/sqrt(precision))  # standard deviation
     mu <- rnorm(1,post$param$posterior$mu, sigma_n / sqrt(post$param$posterior$v))
+    if(percentile_ale == 0){
     gen_sample <- rlnorm(niter_ale, meanlog = mu, sdlog = sigma_n)
-  
+    }
+    else{
+    gen_sample <- rep(qlnorm(percentile_ale/100, meanlog = mu, sdlog = sigma_n), niter_ale)
+    }
+    
     output <- list(gen_sample = gen_sample)
   
     return(output)
@@ -138,7 +143,7 @@ load('data_assessment.Rdata')
   ## Combination of uncertainty
 
   combine_uncertainty <- function(gen_data_concentration, gen_data_consumption, 
-                                  gen_data_EKE, threshold = 0.5, niter_ale, percentile_ale){
+                                  gen_data_EKE, threshold = 0.5, niter_ale){
     
     gen_data_concentration <- matrix(unlist(gen_data_concentration), ncol = 7, nrow = niter_ale)
     gen_data_consumption <- matrix(unlist(gen_data_consumption), ncol = 7, nrow = niter_ale)
@@ -147,9 +152,8 @@ load('data_assessment.Rdata')
     
     prob_exceed_wi <- mean(weekly_intake > threshold)
     
-    high_consumer_weekly_intake <- quantile(weekly_intake, probs = percentile_ale/100)
+    return(prob_exceed_wi = prob_exceed_wi)
     
-    return(list(prob_exceed_wi = prob_exceed_wi, high_consumer_weekly_intake = high_consumer_weekly_intake[[1]]))
   }
   
   ###############################################################################
@@ -179,8 +183,6 @@ load('data_assessment.Rdata')
     
     prob_exceed <- rep(0, niter_epi)
     
-    high_consumer_weekly_intake <- rep(0, niter_epi)
-    
     post_concentration <-  lapply(data_concentration, update_normal_gamma, mu0 = concentration_mu0,
                                   v0 = concentration_v0, alpha0 = concentration_alpha0, 
                                   beta0 = concentration_beta0, suff_stat = suff_stat_concentration)
@@ -196,32 +198,24 @@ load('data_assessment.Rdata')
     
     for(i in 1:niter_epi){
       
-      gen_data_concentration <-  lapply(post_concentration, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_concentration <-  lapply(post_concentration, propagate_normal_gamma, niter_ale = niter_ale, percentile_ale = 0)
       
-      gen_data_consumption <-  lapply(post_consumption, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_consumption <-  lapply(post_consumption, propagate_normal_gamma, niter_ale = niter_ale, percentile_ale = percentile_ale)
       
-      aux <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
-                                            gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale, percentile_ale)
-      
-      prob_exceed[[i]] = aux[[1]]
-      
-      high_consumer_weekly_intake[[i]] = aux[[2]]
+      prob_exceed[[i]] <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
+                                            gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale)
       
     }
     
     expected_prob_exceed <- mean(prob_exceed)
     hdi_prob_exceed <- hdi(prob_exceed, credMass = 0.95) # Highest (Posterior) Density Interval
     
-    high_consumer_prob_exceed <- mean(high_consumer_weekly_intake > threshold)
-    
     return(list(prob_consumption_event = prob_consumption,
                 parameters_concentration = parameters_concentration,
                 parameters_consumption = parameters_consumption,
                 prob_exceed = prob_exceed, 
                 expected_prob_exceed = expected_prob_exceed,
-                hdi_prob_exceed = hdi_prob_exceed,
-                high_consumer_weekly_intake = high_consumer_weekly_intake,
-                high_consumer_prob_exceed = high_consumer_prob_exceed))
+                hdi_prob_exceed = hdi_prob_exceed))
   }
   
   
@@ -249,7 +243,7 @@ load('data_assessment.Rdata')
 
 ## Final assessment
   
-  TWI_pp <-  unc_analysis_assessment(niter_ale = 100, niter_epi = 100, threshold = 0.5, percentile_ale = 95,
+  TWI_pp <-  unc_analysis_assessment(niter_ale = 1000, niter_epi = 1000, threshold = 0.5, percentile_ale = 95,
                                      data_concentration = data_assessment$log_concentration_ss_data, 
                                      data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
@@ -267,37 +261,35 @@ load('data_assessment.Rdata')
  
   ### initial_mu0 = c(concentration_mu0, consumption_mu0)
 
-  obj_func <- function(parameters, niter_ale = 1000, niter_epi = 1000, 
+  obj_func <- function(parameters, niter_ale = 1000, niter_epi = 1000,
+                       threshold = 0.5, percentile_ale = 95,
                        data_concentration = data_assessment$log_concentration_ss_data, 
-                       concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                       suff_stat_concentration = TRUE,
                        data_consumption = data_assessment$log_consumption_ss_data,
-                       consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                       suff_stat_consumption = TRUE,
-                       consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                       gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale, output_exp = 'TRUE'){
+                       gen_data_EKE = gen_eke, consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
+                       concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, suff_stat_concentration = TRUE,
+                       consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, suff_stat_consumption = TRUE,
+                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1, output_exp = 'TRUE'){
     
     concentration_mu0 <- parameters[1] 
     consumption_mu0 <- parameters[2] 
     
     out <- unc_analysis_assessment(niter_ale = niter_ale, niter_epi= niter_epi, data_concentration = data_concentration, 
-                              concentration_mu0 = concentration_mu0, concentration_v0 = concentration_v0, 
-                              concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0,
-                              suff_stat_concentration = suff_stat_concentration,
-                              data_consumption = data_consumption,
-                              consumption_mu0 = consumption_mu0, consumption_v0 =  consumption_v0, 
-                              consumption_alpha0 = consumption_alpha0, consumption_beta0 = consumption_beta0, 
-                              suff_stat_consumption = suff_stat_consumption,
-                              consumers_info_sample_size = consumers_info_sample_size, 
-                              consumption_event_alpha0 = consumption_event_alpha0, consumption_event_beta0 = consumption_event_beta0,
-                              gen_data_EKE = gen_data_EKE, threshold = threshold, percentile_ale = percentile_ale)
+                                   threshold = threshold, percentile_ale = percentile_ale,
+                                   data_consumption = data_consumption,  gen_data_EKE = gen_data_EKE,
+                                   consumers_info_sample_size = consumers_info_sample_size, 
+                                   concentration_mu0 = concentration_mu0, concentration_v0 = concentration_v0, 
+                                   concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0,
+                                   suff_stat_concentration = suff_stat_concentration,
+                                   consumption_mu0 = consumption_mu0, consumption_v0 =  consumption_v0, 
+                                   consumption_alpha0 = consumption_alpha0, consumption_beta0 = consumption_beta0, 
+                                   suff_stat_consumption = suff_stat_consumption,
+                                   consumption_event_alpha0 = consumption_event_alpha0, consumption_event_beta0 = consumption_event_beta0)
     
     if(output_exp == 'TRUE'){
       output <- out$expected_prob_exceed
     }
     else{
-      output <- out$percentile_prob_exceed[[1]]
+      output <- out$high_consumer_prob_exceed
     }
     return(output)
   }
