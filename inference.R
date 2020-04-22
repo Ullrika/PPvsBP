@@ -157,17 +157,20 @@ load('data_assessment.Rdata')
   #suggest to put everything that is fixed inside the function, and clarify what is changeable
   #I.e. niter_ale, niter_epi, threshold, percentile_ale
   
-  unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, data_concentration, 
-                              concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, suff_stat_concentration = TRUE,
+  unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
+                                      threshold = 0.5, percentile_ale,
+                                      data_concentration, 
+                              concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
+                              concentration_beta0 = 1, suff_stat_concentration = TRUE,
                               data_consumption,
-                              consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, suff_stat_consumption = TRUE,
-                              consumers_info_sample_size, consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                              gen_data_EKE, threshold = 0.5, percentile_ale){
+                              consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
+                              consumption_beta0 = 1, suff_stat_consumption = TRUE,
+                              consumers_info_sample_size, consumption_event_alpha0 = 1, 
+                              consumption_event_beta0 = 1,
+                              gen_data_EKE){
     
-    l_data <- length(data_concentration)  #7
-    parameters_concentration <- vector('list', l_data)
-    parameters_consumption <- vector('list', l_data)
-    prob_consumption = vector('list', l_data)
+    nr_products <-  length(data_concentration)
+    prob_consumption <- parameters_consumption <- parameters_concentration <- vector('list', nr_products)
     
     # Probability of a child i consumes chocolate product k
     param_consumption = lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = consumption_event_alpha0, beta0 = consumption_event_beta0)
@@ -178,24 +181,24 @@ load('data_assessment.Rdata')
     
     prob_exceed <- rep(0, niter_epi)
     
-    post_update_concentration = lapply(data_concentration, update_normal_gamma, mu0 = concentration_mu0,
+    post_concentration = lapply(data_concentration, update_normal_gamma, mu0 = concentration_mu0,
                                        v0 = concentration_v0, alpha0 = concentration_alpha0, 
                                        beta0 = concentration_beta0, suff_stat = suff_stat_concentration)
     
-    post_update_consumption = lapply(data_consumption, update_normal_gamma, mu0 = consumption_mu0, 
+    post_consumption = lapply(data_consumption, update_normal_gamma, mu0 = consumption_mu0, 
                                      v0 = consumption_v0, alpha0 = consumption_alpha0, 
                                      beta0 = consumption_beta0, suff_stat = suff_stat_consumption)
-    for(j in 1:l_data){
-      parameters_concentration[[j]] = post_update_concentration[[j]]$param
+    for(j in 1:nr_products){
+      parameters_concentration[[j]] = post_concentration[[j]]$param
       
-      parameters_consumption[[j]] = post_update_consumption[[j]]$param
+      parameters_consumption[[j]] = post_consumption[[j]]$param
     }
    
     for(i in 1:niter_epi){
       
-      gen_data_concentration = lapply(post_update_concentration, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_concentration = lapply(post_concentration, propagate_normal_gamma, niter_ale = niter_ale)
       
-      gen_data_consumption = lapply(post_update_consumption, propagate_normal_gamma, niter_ale = niter_ale)
+      gen_data_consumption = lapply(post_consumption, propagate_normal_gamma, niter_ale = niter_ale)
       
       prob_exceed[i] <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
                                  gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale)
@@ -204,6 +207,7 @@ load('data_assessment.Rdata')
     
     expected_prob_exceed <- mean(prob_exceed)
     hdi_prob_exceed <- hdi(prob_exceed, credMass = 0.95) # Highest (Posterior) Density Interval
+    #**US to IR: is this correct? 
     percentile_prob_exceed = quantile(prob_exceed, probs = (percentile_ale/100)) 
     
     return(list(prob_consumption_event = prob_consumption,
