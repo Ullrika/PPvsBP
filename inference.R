@@ -25,6 +25,10 @@ load('data_assessment.Rdata')
   ## Normal-Gamma conjugate model (Bayesian inference). 
   ## sufficient statistics (sample mean and sample variance) for the normal likelihood are known for log-aluminium concentration and log-consumption 
   
+  # mu0, v0, alpha0 and beta0 are hyperparameters for the normal-gamma prior distribution
+  # data input data, it could be observed data or sufficient statistics (sample size, sample mean and sample variance))
+  # suff_stat indicates how the data is provided (observed data or sufficient statistics), default is TRUE
+  
   update_normal_gamma <- function(data, mu0 = 0, v0 = 5, alpha0 = 1, beta0 = 1, suff_stat = TRUE){
     
     if(suff_stat == TRUE){
@@ -52,6 +56,9 @@ load('data_assessment.Rdata')
   
   ## Bernoulli-Beta conjugate model (Bayesian inference). 
   
+  # alpha0 and beta0 are hyperparameters for the beta prior distribution
+  # data refers to input data, (sample sizes coresponding to consumer and non consumer)
+  
   update_bernoulli_beta <- function(data, alpha0 = 1, beta0 = 1){
     n_non_consumer <- data[['non_consumer_sample_size']]
     n_consumer <- data[['consumer_sample_size']]
@@ -66,9 +73,10 @@ load('data_assessment.Rdata')
   }
 
   ################################################################################
-  ## post refers to the parameters of the posterior distribution -- normal-gamma 
+  
   ## niter_ale refers to the number of generated samples  
-  ## percentile_ale indicates if the assessment is done in a high consumer child by 95 or on all children by 0
+  ## post refers to the parameters of the posterior distribution -- normal-gamma (mu, v, alpha and beta) 
+  ## percentile_ale indicates if the assessment is done in a high consumer child by 95 or on all population by 0, default is 0
   
   propagate_normal_gamma <- function(niter_ale, post, percentile_ale){
   
@@ -96,6 +104,10 @@ load('data_assessment.Rdata')
   # plotfit(change_cocoa_dist)
   
   ## The fitted distribution is beta(1.39, 1.33)
+  
+  ## vals indicates elicited  values  from  experts  
+  ## probs indicates their corresponding  elicited(percentile) probabilities
+  
   quantify_uncertainty_pp_change_eke <- function(vals, probs){
     change_cocoa_dist <- SHELF::fitdist(vals = vals, probs = probs, lower = min(vals) - 0.5 , upper = max(vals) + 0.5 )
     best_fit <- toString(change_cocoa_dist$best.fitting$best.fit)
@@ -137,7 +149,13 @@ load('data_assessment.Rdata')
   
   ################################################################################
   ## Combination of uncertainty
-
+  
+  ## gen_data_concentration is generated concentration data after Bayesian inference (using posterior parameters)
+  ## gen_data_consumption is generated consumption data after Bayesian inference (using posterior parameters)
+  ## gen_data_EKE is a generated value regarding change in consumption form 2002 to 2017 after a distribution has been fitted to the elicited values
+  ## threshold indicates the assessment threshold
+  ## niter_ale refers to the number of generated samples
+  
   combine_uncertainty <- function(gen_data_concentration, gen_data_consumption, 
                                   gen_data_EKE, threshold, niter_ale){
     
@@ -157,7 +175,29 @@ load('data_assessment.Rdata')
   #**US to IR: This is the uncertainty analysis on the assessment, I 
   #suggest to put everything that is fixed inside the function, and clarify what is changeable
   #I.e. niter_ale, niter_epi, threshold, percentile_ale
-
+  
+  ## This function uses previous defined functions 
+  
+  ## niter_ale indicates the number of generated samples
+  ## niter_epi indicates the number of generated parameters from the posterior distrbutions (number of repetitions the assessment will be done)
+  ## threshold indicates the assessment threshold
+  ## percentile_ale indicates if the assessment is done in a high consumer child by 95 or on all population by 0, default is 0
+  ## data_concentration indicates concentration input data
+  ## data_consumption indicates consumption input data 
+  ## gen_data_EKE indicates a generated value regarding change in consumption form 2002 to 2017 after a distribution has been fitted to the elicited values
+  ## consumers_info_sample_size indicates the sample size of consumer and non consumer  
+  ## concentration_mu0 indicates the hyperparameter mu0 corresponding to concentration 
+  ## concentration_v0 indicates the hyperparameter v0  corresponding to concentration 
+  ## concentration_alpha0  indicates the hyperparameter alpha0  corresponding to concentration 
+  ## concentration_beta0 indicates the hyperparameter beta0 corresponding to concentration 
+  ## suff_stat_concentration indicates how concentration data is provided (observed data or sufficient statistics), default is TRUE
+  ## consumption_mu0 indicates the hyperparameter mu0 corresponding to consumption
+  ## consumption_v0 indicates the hyperparameter v0  corresponding to  consumption
+  ## consumption_alpha0  indicates the hyperparameter alpha0  corresponding to consumption 
+  ## consumption_beta0 indicates the hyperparameter beta0 corresponding to consumption 
+  ## suff_stat_consumption indicates how consumption data is provided (observed data or sufficient statistics), default is TRUE
+  
+  
   unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
                                       threshold = 1, percentile_ale = 0,
                                       data_concentration, data_consumption, gen_data_EKE, consumers_info_sample_size,
@@ -218,6 +258,8 @@ load('data_assessment.Rdata')
  ###################################################################################
   ## Figures  
   
+  # assessment_output indicates the output of the unc_analysis_assessment function
+  
   graph_plot_pp <- function(assessment_output){
     
     prob_cdf <- c(1:length(assessment_output$prob_exceed))/(length(assessment_output$prob_exceed))
@@ -233,6 +275,7 @@ load('data_assessment.Rdata')
    }
 
 }
+
 #########################################################################################################################################
 #########################################################################################################################################
 ## Precise probability
@@ -243,6 +286,7 @@ load('data_assessment.Rdata')
 
 ## Final assessment
   
+  ## all population
   TWI_pp <-  unc_analysis_assessment(niter_ale = 10000, niter_epi = 10000, threshold = 1, percentile_ale = 0,
                                      data_concentration = data_assessment$log_concentration_ss_data, 
                                      data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
@@ -255,6 +299,7 @@ load('data_assessment.Rdata')
   
   save(TWI_pp, file = 'TWI_pp.Rdata')
 
+  ## A high consumer
   TWI_pp_high_consumer <-  unc_analysis_assessment(niter_ale = 10000, niter_epi = 10000, threshold = 1, percentile_ale = 95,
                                      data_concentration = data_assessment$log_concentration_ss_data, 
                                      data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
@@ -345,6 +390,7 @@ load('data_assessment.Rdata')
     
     return(list(opt_value = opt_value, opt_prob_exceed = out$prob_exceed))
   }
+  
   
   graph_bp <- function(lower_points, upper_points){
      

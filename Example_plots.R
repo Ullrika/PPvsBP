@@ -70,7 +70,7 @@ df_epi <- sample_param_df  %>%
 p_pdf <- df_epi %>%
   mutate(grp = .iter) %>% 
   ggplot(aes(group=grp, x=vals, y=ds)) +
-  geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="grey50")+
+  geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="blue")+
   coord_cartesian(expand = FALSE) +
   labs(
     title = "",
