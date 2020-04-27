@@ -4,13 +4,15 @@
 # 17 april 2020
 
 ########################
-library('SHELF')
-library('HDInterval')
-library('dfoptim')
+library(SHELF)
+library(HDInterval)
+library(dfoptim)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 
 ####################################################
 ## Load data 
-
 load('data_assessment.Rdata')
 
 ###################################################
@@ -66,6 +68,7 @@ load('data_assessment.Rdata')
   ################################################################################
   ## post refers to the parameters of the posterior distribution -- normal-gamma 
   ## niter_ale refers to the number of generated samples  
+  ## percentile_ale indicates if the assessment is done in a high consumer child by 95 or on all children by 0
   
   propagate_normal_gamma <- function(niter_ale, post, percentile_ale){
   
@@ -83,13 +86,6 @@ load('data_assessment.Rdata')
   
     return(output)
   }  
-
-# post_update_concentration = lapply(data_assessment$log_concentration_ss_data, update_normal_gamma, mu0 = 1, v0 = 5, alpha0 = 1, beta0 = 1, suff_stat = TRUE)
-# gen_data_concentration = lapply(post_update_concentration, propagate_normal_gamma, niter_ale = 1000)
-
-# post_update_consumption = lapply(data_assessment$log_consumption_ss_data, update_normal_gamma, mu0 = 1, v0 = 5, alpha0 = 1, beta0 = 1, suff_stat = TRUE)
-# gen_data_consumption = lapply(post_update_consumption, propagate_normal_gamma, niter_ale = 1000)
-
 
   ################################################################################
   ## Precise Probability EKE 
@@ -143,7 +139,7 @@ load('data_assessment.Rdata')
   ## Combination of uncertainty
 
   combine_uncertainty <- function(gen_data_concentration, gen_data_consumption, 
-                                  gen_data_EKE, threshold = 0.5, niter_ale){
+                                  gen_data_EKE, threshold, niter_ale){
     
     gen_data_concentration <- matrix(unlist(gen_data_concentration), ncol = 7, nrow = niter_ale)
     gen_data_consumption <- matrix(unlist(gen_data_consumption), ncol = 7, nrow = niter_ale)
@@ -163,7 +159,7 @@ load('data_assessment.Rdata')
   #I.e. niter_ale, niter_epi, threshold, percentile_ale
 
   unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
-                                      threshold = 0.5, percentile_ale = 95,
+                                      threshold = 1, percentile_ale = 0,
                                       data_concentration, data_consumption, gen_data_EKE, consumers_info_sample_size,
                                       concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                       concentration_beta0 = 1, suff_stat_concentration = TRUE,
@@ -221,17 +217,21 @@ load('data_assessment.Rdata')
   
  ###################################################################################
   ## Figures  
-  graph_plot_pp = function(assessment_output){
-    w <- 0
-    plot(sort(assessment_output$prob_exceed),(1:length(assessment_output$prob_exceed))/(length(assessment_output$prob_exceed)), 
-         xlab = 'Frequency of exceeding the TWI', main = 'Uncertainty', ylab = 'cdf', type = 'l')
-    expected_prob_exceed <- assessment_output$expected_prob_exceed
-    hdi_prob_exceed <-  assessment_output$hdi_prob_exceed # Highest (Posterior) Density Interval
-    #segments(x0 = hdi_prob_exceed[1], x1 = hdi_prob_exceed[2], y0 = w, col = 'blue', lwd = 10)
-    #points(expected_prob_exceed, w, pch = 20, cex = 2, col = 'darkred')
-    #legend('bottomright',c('Probability interval','Expected value'), col = c('blue','darkred'), pch = c(1,1), bty = 'n')
-  }
   
+  graph_plot_pp <- function(assessment_output){
+    
+    prob_cdf <- c(1:length(assessment_output$prob_exceed))/(length(assessment_output$prob_exceed))
+    data_plot <- data.frame(prob_exceed = sort(assessment_output$prob_exceed), prob_cdf = prob_cdf)
+    
+    data_plot %>% 
+      ggplot(mapping = aes(y = prob_cdf,  x = prob_exceed)) +
+      geom_line() +
+      labs(
+        title = "Uncertainty",
+        x = "Frequency of exceeding TWI",
+        y = "cdf")
+   }
+
 }
 #########################################################################################################################################
 #########################################################################################################################################
@@ -243,7 +243,7 @@ load('data_assessment.Rdata')
 
 ## Final assessment
   
-  TWI_pp <-  unc_analysis_assessment(niter_ale = 1000, niter_epi = 1000, threshold = 0.5, percentile_ale = 95,
+  TWI_pp <-  unc_analysis_assessment(niter_ale = 10000, niter_epi = 10000, threshold = 1, percentile_ale = 0,
                                      data_concentration = data_assessment$log_concentration_ss_data, 
                                      data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
@@ -253,22 +253,34 @@ load('data_assessment.Rdata')
                                      consumption_beta0 = 1, suff_stat_consumption = TRUE,
                                      consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
   
-  
   save(TWI_pp, file = 'TWI_pp.Rdata')
+
+  TWI_pp_high_consumer <-  unc_analysis_assessment(niter_ale = 10000, niter_epi = 10000, threshold = 1, percentile_ale = 95,
+                                     data_concentration = data_assessment$log_concentration_ss_data, 
+                                     data_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
+                                     consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                                     concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
+                                     concentration_beta0 = 1, suff_stat_concentration = TRUE,
+                                     consumption_mu0 = 0, consumption_v0 = 5, consumption_alpha0 = 1, 
+                                     consumption_beta0 = 1, suff_stat_consumption = TRUE,
+                                     consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
+  
+  save(TWI_pp_high_consumer, file = 'TWI_pp_high_consumer.Rdata')
+  
   
 ##########################################################################################
   ## Bounded probability 
- 
+{
   ### initial_mu0 = c(concentration_mu0, consumption_mu0)
 
   obj_func <- function(parameters, niter_ale = 1000, niter_epi = 1000,
-                       threshold = 0.5, percentile_ale = 95,
+                       threshold = 0.5, percentile_ale = 0,
                        data_concentration = data_assessment$log_concentration_ss_data, 
                        data_consumption = data_assessment$log_consumption_ss_data,
                        gen_data_EKE = gen_eke, consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
                        concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, suff_stat_concentration = TRUE,
                        consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, suff_stat_consumption = TRUE,
-                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1, output_exp = 'TRUE'){
+                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
     
     concentration_mu0 <- parameters[1] 
     consumption_mu0 <- parameters[2] 
@@ -285,189 +297,177 @@ load('data_assessment.Rdata')
                                    suff_stat_consumption = suff_stat_consumption,
                                    consumption_event_alpha0 = consumption_event_alpha0, consumption_event_beta0 = consumption_event_beta0)
     
-    if(output_exp == 'TRUE'){
-      output <- out$expected_prob_exceed
-    }
-    else{
-      output <- out$high_consumer_prob_exceed
-    }
+    output <- out$expected_prob_exceed
+   
     return(output)
   }
  
+  bound_prob  <- function(obj_func, maximize = 'TRUE', lower = c(1, -5), upper = c(6, 1),
+                   niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 0,
+                   data_concentration = data_assessment$log_concentration_ss_data,
+                   data_consumption = data_assessment$log_consumption_ss_data,
+                   gen_data_EKE = gen_eke, 
+                   consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                   concentration_mu0 = 5.75,
+                   concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
+                   suff_stat_concentration = TRUE,
+                   consumption_mu0 = 0.75,
+                   consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
+                   suff_stat_consumption = TRUE,
+                   consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
+    
+    initial_mu0 = c(concentration_mu0, consumption_mu0)
+    
+    opt_value <- nmkb(par = initial_mu0, fn = obj_func, lower = lower, upper = upper,
+                             control = list(maximize =  maximize),
+                             niter_ale = niter_ale, niter_epi = niter_epi, threshold = threshold, percentile_ale = percentile_ale,
+                             data_concentration = data_concentration, data_consumption = data_consumption, 
+                             gen_data_EKE = gen_data_EKE, 
+                             consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
+                             concentration_v0 = concentration_v0, concentration_alpha0 = concentration_alpha0,
+                             concentration_beta0 = concentration_beta0, suff_stat_concentration = suff_stat_concentration,
+                             consumption_v0 = consumption_v0, consumption_alpha0 = consumption_alpha0, 
+                             consumption_beta0 = consumption_beta0, suff_stat_consumption = suff_stat_consumption,
+                             consumption_event_alpha0 = consumption_event_alpha0, 
+                             consumption_event_beta0 = consumption_event_beta0)
+    
+    out <- unc_analysis_assessment(niter_ale = niter_ale, niter_epi= niter_epi, data_concentration = data_concentration, 
+                                   threshold = threshold, percentile_ale = percentile_ale,
+                                   data_consumption = data_consumption,  gen_data_EKE = gen_data_EKE,
+                                   consumers_info_sample_size = consumers_info_sample_size, 
+                                   concentration_mu0 = opt_value$par[1], concentration_v0 = concentration_v0, 
+                                   concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0,
+                                   suff_stat_concentration = suff_stat_concentration,
+                                   consumption_mu0 =  opt_value$par[2], consumption_v0 =  consumption_v0, 
+                                   consumption_alpha0 = consumption_alpha0, consumption_beta0 = consumption_beta0, 
+                                   suff_stat_consumption = suff_stat_consumption,
+                                   consumption_event_alpha0 = consumption_event_alpha0, consumption_event_beta0 = consumption_event_beta0)
+    
+    return(list(opt_value = opt_value, opt_prob_exceed = out$prob_exceed))
+  }
   
-  graph_bp <- function(lower_points, upper_points, min_exp, max_exp){
+  graph_bp <- function(lower_points, upper_points){
+     
+    n_values <- length(lower_points)
+    l_points <- rep(0,n_values)
+    u_points <- rep(0,n_values)
     
-    l <- length(lower_points)
-    l_points <- rep(0,l)
-    u_points <- rep(0,l)
-    
-    for(i in 1:l){
+    for(i in 1:n_values){
       l_points[i] <- min(lower_points[i],upper_points[i]) 
       u_points[i] <- max(lower_points[i],upper_points[i])
     }
     
-    par(mfrow = c(1,1))
-    plot(sort(l_points),(1:l)/(l), xlim = c(0,max(u_points)),
-         xlab = 'Frequency of exceeding the TWI', main = 'Uncertainty', ylab = 'cdf', type = 'l', col = 'red')
-    par(new=TRUE)
+    # data wide format
+    data_plot <- data.frame(l_points = sort(l_points), u_points = sort(u_points), cdf = c(1:length(l_points)/ length(l_points)))
+    x1 <-  data_plot[1,1]
+    x1_end <-   data_plot[1,2]
     
-    plot(sort(u_points),(1:l)/(l), xlim = c(0,max(u_points)),
-         xlab = 'Frequency of exceeding the TWI', main = 'Uncertainty', ylab = 'cdf', type = 'l', col = 'blue')
-    par(new=TRUE)
-    segments(x0 = sort(l_points)[1], x1 = sort(u_points)[1], y0 = 0, col = 'blue', lwd = 1) 
-    segments(x0 = tail(sort(l_points),1), x1 = tail(sort(u_points),1), y0 = 1, col = 'red', lwd = 1) 
+    x2 <-  tail(data_plot[,1], 1)
+    x2_end <- tail(data_plot[,2], 1)
     
-    #segments(x0 = min_exp, x1 = max_exp, y0 = 0, col = 'black', lwd = 2) 
+    # data long format
+    data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
     
-    legend('bottomright',c('Lower cdf', 'Upper cdf'), col = c('blue','red'), pch = c(1,1), bty = 'n')
+     
+  p <- data_plot %>% 
+     ggplot(aes(x = values, y = cdf, group = bound, col = bound)) +
+      geom_line() +
+      scale_color_manual(labels = c('Upper', 'Lower'), values = c('red', 'blue')) +
+      guides(color = guide_legend("Bounds")) +
+      labs(
+        title = "Uncertainty",
+        x = "Frequency of exceeding TWI",
+        y = "cdf")
+  
+  p = p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
+  p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
     
   }
   
-#####################################################################
-  ### initial_mu0 = c(concentration_mu0, consumption_mu0)
-  initial_mu0 <- c(5.75, 0.75)
+}
+  #################################################
   
-  argmin_upper_exp <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                    control = list(maximize = TRUE),
-                    niter_ale = 1000, niter_epi = 1000, 
-                    data_concentration = data_assessment$log_concentration_ss_data, 
-                    concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                    suff_stat_concentration = TRUE,
-                    data_consumption = data_assessment$log_consumption_ss_data,
-                    consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    suff_stat_consumption = TRUE,
-                    consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                    consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                    gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'TRUE')
-   
-   argmin_upper_perc <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                    control = list(maximize = TRUE),
-                    niter_ale = 1000, niter_epi = 1000, 
-                    data_concentration = data_assessment$log_concentration_ss_data, 
-                    concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                    suff_stat_concentration = TRUE,
-                    data_consumption = data_assessment$log_consumption_ss_data,
-                    consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                    suff_stat_consumption = TRUE,
-                    consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                    consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                    gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'FALSE')
-   
-   ############
-   ### initial_mu0 <- c(concentration_mu0, consumption_mu0)
-   initial_mu0 <- c(2.75, -2.5)
-   
-   argmin_lower_exp <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                           control = list(maximize = FALSE),
-                           niter_ale = 1000, niter_epi = 1000, 
-                           data_concentration = data_assessment$log_concentration_ss_data, 
+  upper_bound <- bound_prob(obj_func = obj_func, maximize = TRUE, lower = c(1, -5), upper = c(6, 1),
+                          niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 0,
+                          data_concentration = data_assessment$log_concentration_ss_data,
+                          data_consumption = data_assessment$log_consumption_ss_data,
+                          gen_data_EKE = gen_eke, 
+                          consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                          concentration_mu0 = 5.75,
+                          concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
+                          suff_stat_concentration = TRUE,
+                          consumption_mu0 = 0.75,
+                          consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
+                          suff_stat_consumption = TRUE,
+                          consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
+  
+  save(upper_bound, file = 'upper_bound.Rdata')
+  
+  lower_bound <- bound_prob(obj_func = obj_func, maximize = FALSE, lower = c(1, -5), upper = c(6, 1),
+                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 0,
+                           data_concentration = data_assessment$log_concentration_ss_data,
+                           data_consumption = data_assessment$log_consumption_ss_data,
+                           gen_data_EKE = gen_eke, 
+                           consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                           concentration_mu0 = 2.75,
                            concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
                            suff_stat_concentration = TRUE,
-                           data_consumption = data_assessment$log_consumption_ss_data,
+                           consumption_mu0 = -2.5,
                            consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
                            suff_stat_consumption = TRUE,
-                           consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                           consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                           gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'TRUE')
-   
-
-   argmin_lower_perc <- nmkb(par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                            control = list(maximize = FALSE),
-                            niter_ale = 1000, niter_epi = 1000, 
-                            data_concentration = data_assessment$log_concentration_ss_data, 
-                            concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                            suff_stat_concentration = TRUE,
-                            data_consumption = data_assessment$log_consumption_ss_data,
-                            consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                            suff_stat_consumption = TRUE,
-                            consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                            consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                            gen_data_EKE = gen_eke, threshold = 0.5, percentile_ale = 95, output_exp = 'FALSE')
-   
-   #################
-   percentiles <- seq(1,99, by = 1)
-
-   initial_mu0 <- c(5.75, 0.75)
-   
-   upper_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                        control = list(maximize = TRUE),
-                        niter_ale = 1000, niter_epi = 1000, 
-                        data_concentration = data_assessment$log_concentration_ss_data, 
-                        concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                        suff_stat_concentration = TRUE,
-                        data_consumption = data_assessment$log_consumption_ss_data,
-                        consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                        suff_stat_consumption = TRUE,
-                        consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                        consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                        gen_data_EKE = gen_eke, threshold = 0.5, output_exp = 'FALSE')
-   
-   save(upper_bound_perc, file = 'upper_bound_perc_bp.Rdata')
-   
-   percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
-   
-   upper_bound_perc1 <- lapply(percentiles_1, nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                            control = list(maximize = TRUE),
-                            niter_ale = 1000, niter_epi = 1000, 
-                            data_concentration = data_assessment$log_concentration_ss_data, 
-                            concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                            suff_stat_concentration = TRUE,
-                            data_consumption = data_assessment$log_consumption_ss_data,
-                            consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                            suff_stat_consumption = TRUE,
-                            consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                            consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                            gen_data_EKE = gen_eke, threshold = 0.5, output_exp = 'FALSE')
-   
-   save(upper_bound_perc1, file = 'upper_bound_perc1_bp.Rdata')
-   ####
-   
-   initial_mu0 <- c(2.75, -2.5)
-   
-   lower_bound_perc <- lapply(c(1,5,25,50,75,95,99), nmkb, par = initial_mu0 , fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                        control = list(maximize = FALSE),
-                        niter_ale = 1000, niter_epi = 1000, 
-                        data_concentration = data_assessment$log_concentration_ss_data, 
-                        concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                        suff_stat_concentration = TRUE,
-                        data_consumption = data_assessment$log_consumption_ss_data,
-                        consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                        suff_stat_consumption = TRUE,
-                        consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                        consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                        gen_data_EKE = gen_eke, threshold = 0.5, output_exp = 'FALSE')
+                           consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
   
-   save(lower_bound_perc , file = 'lower_bound_perc_bp.Rdata')
-   
-   percentiles_1 <- c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99)
-   
-   lower_bound_perc1 <- lapply(percentiles_1, nmkb, par = initial_mu0, fn = obj_func,  lower = c(1, -5), upper = c(6, 1),
-                            control = list(maximize = FALSE),
-                            niter_ale = 1000, niter_epi = 1000, 
-                            data_concentration = data_assessment$log_concentration_ss_data, 
-                            concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
-                            suff_stat_concentration = TRUE,
-                            data_consumption = data_assessment$log_consumption_ss_data,
-                            consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
-                            suff_stat_consumption = TRUE,
-                            consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
-                            consumption_event_alpha0 = 1, consumption_event_beta0 = 1,
-                            gen_data_EKE = gen_eke, threshold = 0.5, output_exp = 'FALSE')
-   
-   save(lower_bound_perc1, file = 'lower_bound_perc1_bp.Rdata')
-   
-   ## extract the values corresponding to percentiles_1
-   
-   upper_vals <- unlist(lapply(upper_bound_perc1, function(x){x$value}))
-   lower_vals <- unlist(lapply(lower_bound_perc1, function(x){x$value}))
-    
+  save(lower_bound, file = 'lower_bound.Rdata')
+  
+  upper_bound_high_consumer <- bound_prob(obj_func = obj_func, maximize = TRUE, lower = c(1, -5), upper = c(6, 1),
+                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
+                           data_concentration = data_assessment$log_concentration_ss_data,
+                           data_consumption = data_assessment$log_consumption_ss_data,
+                           gen_data_EKE = gen_eke, 
+                           consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                           concentration_mu0 = 5.75,
+                           concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
+                           suff_stat_concentration = TRUE,
+                           consumption_mu0 = 0.75,
+                           consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
+                           suff_stat_consumption = TRUE,
+                           consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
+  
+  save(upper_bound_high_consumer, file = 'upper_bound_high_consumer.Rdata')
+  
+  lower_bound_high_consumer <- bound_prob(obj_func = obj_func, maximize = FALSE, lower = c(1, -5), upper = c(6, 1),
+                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
+                           data_concentration = data_assessment$log_concentration_ss_data,
+                           data_consumption = data_assessment$log_consumption_ss_data,
+                           gen_data_EKE = gen_eke, 
+                           consumers_info_sample_size = data_assessment$consumers_info_sample_size,
+                           concentration_mu0 = 2.75,
+                           concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
+                           suff_stat_concentration = TRUE,
+                           consumption_mu0 = -2.5,
+                           consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, 
+                           suff_stat_consumption = TRUE,
+                           consumption_event_alpha0 = 1, consumption_event_beta0 = 1)
+  
+  save(lower_bound_high_consumer, file = 'lower_bound_high_consumer.Rdata')
+  
+#############################################  
   ## Visualizations
-load('TWI_pp.Rdata')
-graph_plot_pp(assessment_output = TWI_pp)
+  ## Precise probability
+  load('TWI_pp.Rdata')
+  graph_plot_pp(assessment_output = TWI_pp)
   
-   
-load('upper_bound_perc_bp.Rdata')
-load('upper_bound_perc1_bp.Rdata')
-load('lower_bound_perc_bp.Rdata')
-load('lower_bound_perc1_bp.Rdata')
-graph_bp...
+  load('TWI_pp_high_consumer.Rdata')
+  graph_plot_pp(assessment_output = TWI_pp_high_consumer)
+  
+  ############################
+  ## Bounded probability
+  load('lower_bound.Rdata')
+  load('upper_bound.Rdata') 
+  graph_bp(lower_points = lower_bound$opt_prob_exceed, upper_points = upper_bound$opt_prob_exceed)
+  
+  # high consumer
+  load('lower_bound_high_consumer.Rdata')
+  load('upper_bound_high_consumer.Rdata') 
+  graph_bp(lower_points = lower_bound_high_consumer$opt_prob_exceed, upper_points = upper_bound_high_consumer$opt_prob_exceed)
+  
