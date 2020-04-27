@@ -173,7 +173,7 @@ load('data_assessment.Rdata')
     # Probability of a child i consumes chocolate product k
     param_consumption <-  lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = consumption_event_alpha0, beta0 = consumption_event_beta0)
     
-    for(k in 1:7){
+    for(k in 1:nr_products){
       prob_consumption[[k]] <-  rbeta(1,shape1 = param_consumption[[k]]$param$posterior$alpha, shape2 = param_consumption[[k]]$param$posterior$beta)
     }
     
