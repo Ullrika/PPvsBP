@@ -79,6 +79,21 @@ p_pdf <- df_epi %>%
   )
 p_pdf
 
+
+## 1 pdf plot
+p_pdf <- df_epi %>%
+  mutate(grp = .iter) %>% 
+  ggplot(aes(group=grp, x=vals, y=ds)) +
+  geom_line(data=. %>% filter(.iter == 1) %>% select(-.iter), size=1, color="blue")+
+  coord_cartesian(expand = FALSE) +
+  labs(
+    title = "",
+    x = "mu",
+    y = "pdf"
+  )
+p_pdf
+
+
 #####################################################
 ## Case 2 - Posterior predictive data_pred ~ N(mu_n, sigma_n + sigma2)
 ## CDF plot
@@ -159,6 +174,8 @@ graph_bp <- function(lower_points, upper_points){
   x2 <-  tail(data_plot[,1], 1)
   x2_end <- tail(data_plot[,2], 1)
   
+  prob_1 = 1 / length(l_points)
+  
   # data long format
   data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
   
@@ -173,9 +190,13 @@ graph_bp <- function(lower_points, upper_points){
       x = "Body weight",
       y = "cdf")
   
-  p <- p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
-  p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
   
+  p <- p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
+  p <- p + geom_segment(x = x1_end, y = 0, xend = x1_end, yend = prob_1, col = 'blue') 
+  
+  p <- p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
+  p <- p + geom_segment(x = x1, y = 0, xend = x1, yend = prob_1, col = 'red') 
+  p + theme(legend.justification = c(1,0), legend.position = c(1,0))
 }
 
 graph_bp(lower_points = df_ale_3_mu0_1$vals, upper_points = df_ale_3_mu0_2$vals)

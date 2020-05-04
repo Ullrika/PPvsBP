@@ -779,6 +779,8 @@ load('data_assessment.Rdata')
       x2 <-  tail(data_plot[,1], 1)
       x2_end <- tail(data_plot[,2], 1)
       
+      prob_1 = 1 / length(l_points)
+      
       # data long format
       data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
       
@@ -790,13 +792,17 @@ load('data_assessment.Rdata')
         guides(color = guide_legend("Bounds")) +
         labs(
           title = "Uncertainty",
-          x = "Frequency of exceeding TWI",
+          x = "Body weight",
           y = "cdf")
       
-      p = p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
-      p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
       
+      p <- p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
+      p <- p + geom_segment(x = x1_end, y = 0, xend = x1_end, yend = prob_1, col = 'blue') 
+      p <- p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
+      p + geom_segment(x = x1, y = 0, xend = x1, yend = prob_1, col = 'red') 
+      #p + theme(legend.justification = c(1,0), legend.position = c(1,0))
     }
+    
     
     ### Usage
     ## graph_bp(lower_points, upper_points) 
