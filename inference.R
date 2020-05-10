@@ -121,12 +121,12 @@ load('data_assessment.Rdata')
   ## This function generates samples from a log-normal distribution 
   ## given the posterior hyperparameters of the normal-gamma distribution
   
-  generate_samples_normal_gamma <- function(niter_ale, post, percentile_ale){
+  generate_samples_normal_gamma <- function(niter_ale, post, percentile_ale = NULL){
   
     precision <- rgamma(1, shape = post$param$posterior$alpha, rate = post$param$posterior$beta)  # precision
     sigma_n <- (1/sqrt(precision))  # standard deviation
     mu <- rnorm(1,post$param$posterior$mu, sigma_n / sqrt(post$param$posterior$v))
-    if(percentile_ale == 0){
+    if(is.null(percentile_ale)){
     gen_sample <- rlnorm(niter_ale, meanlog = mu, sdlog = sigma_n)
     }
     else{
@@ -140,13 +140,13 @@ load('data_assessment.Rdata')
   
   
   ###Usage
-  ## generate_samples_normal_gamma(niter_ale, post, percentile_ale)
+  ## generate_samples_normal_gamma(niter_ale, post, percentile_ale = NULL)
   
   
   ## Arguments
   ## niter_ale      number of generated samples  
   ## post           the output of update_normal_gamma function. Post is a list with the prior and posterior hyperparameters of the Normal-Gamma distribution. Prior and posterior are also list with hyperparameters mu, v, alpha and beta. 
-  ## percentile_ale a value that indicates if the assessment is done on all population by 0 or on a high consumer child by 95. Default is 0
+  ## percentile_ale a value that indicates if the assessment is done on all population by NULL (default) or on a high consumer child by 95. 
   
   
   ### Value
@@ -275,7 +275,7 @@ load('data_assessment.Rdata')
     
     for(i in 1:niter_epi){
       
-      gen_data_concentration <-  lapply(post_concentration, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = 0)
+      gen_data_concentration <-  lapply(post_concentration, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = NULL)
       
       gen_data_consumption <-  lapply(post_consumption, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = percentile_ale)
       
@@ -310,7 +310,7 @@ load('data_assessment.Rdata')
   ## niter_epi                            number of generated parameters from the posterior distrbutions 
   ##                                      (it indicates the number of repetitions the assessment will be done)
   ## threshold                            safety threshold
-  ## percentile_ale                       a value that indicates if the assessment is done on all population by 0 or on a high consumer child by 95. Default is 0
+  ## percentile_ale                       a value that indicates if the assessment is done on all population by NULL or on a high consumer child by 95. Default is NULL
   ## suff_stat_concentration              a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
   ##                                      corresponding to concentration. If sufficient_statistics_concentration = FALSE, 
   ##                                      then it is vector of observed data
@@ -379,12 +379,12 @@ load('data_assessment.Rdata')
 
 ## Generate one eke sample 
   fit_normal <- quantify_uncertainty_pp_change_eke(vals = data_assessment$change_cons$vals, probs = data_assessment$change_cons$probs/100)
-  gen_eke = mean(rnorm(2000, mean =  fit_normal[[1]], sd =  fit_normal[[2]]))
+  gen_eke = mean(rnorm(niter.epi, mean =  fit_normal[[1]], sd =  fit_normal[[2]]))
   
 ## Final assessment
   
   ## all population
-  TWI_pp <-  unc_analysis_assessment(niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 0,
+  TWI_pp <-  unc_analysis_assessment(niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = NULL,
                                      suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                                      suff_stat_consumption = data_assessment$log_consumption_ss_data, gen_data_EKE = gen_eke,
                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
@@ -424,7 +424,7 @@ load('data_assessment.Rdata')
     ## the highest posterior density of the probability of exceeding the threshold
      
     unc_analysis_assessment_4_param <- function(niter_ale = 1000, niter_epi = 1000, 
-                                        threshold = 1, percentile_ale = 0,
+                                        threshold = 1, percentile_ale = NULL,
                                         suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
                                         concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                         concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -462,7 +462,7 @@ load('data_assessment.Rdata')
       
       for(i in 1:niter_epi){
         
-        gen_data_concentration <-  lapply(post_concentration, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = 0)
+        gen_data_concentration <-  lapply(post_concentration, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = NULL)
         
         gen_data_consumption <-  lapply(post_consumption, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = percentile_ale)
         
@@ -548,7 +548,7 @@ load('data_assessment.Rdata')
     ### concentration_mu0, consumption_mu0 and EKE_mu, EKE_sigma are the parameters and the rest of the inputs arguments are fixed.   
     
     obj_func_4_param <- function(parameters, niter_ale = 1000, niter_epi = 1000,
-                         threshold = 0.5, percentile_ale = 0,
+                         threshold = 0.5, percentile_ale = NULL,
                          suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                          suff_stat_consumption = data_assessment$log_consumption_ss_data,
                          consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
@@ -635,7 +635,7 @@ load('data_assessment.Rdata')
     bound_prob_exceed_4_param  <- function(obj_func_4_param, maximize = FALSE, 
                                            lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 1), 
                                            upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 1),
-                                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 0,
+                                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                            suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                            suff_stat_consumption = data_assessment$log_consumption_ss_data,
                                            consumers_info_sample_size = data_assessment$consumers_info_sample_size,
@@ -702,7 +702,7 @@ load('data_assessment.Rdata')
     ## niter_epi                            number of generated parameters from the posterior distrbutions 
     ##                                      (it indicates the number of repetitions the assessment will be done)
     ## threshold                            safety threshold
-    ## percentile_ale                       a value that indicates if the assessment is done on all population by 0 or on a high consumer child by 95. Default is 0
+    ## percentile_ale                       a value that indicates if the assessment is done on all population by NULL or on a high consumer child by 95. Default is NULL
     ## suff_stat_concentration              a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
     ##                                      corresponding to concentration. If sufficient_statistics_concentration = FALSE, 
     ##                                      then it is vector of observed data
