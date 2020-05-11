@@ -423,7 +423,7 @@ load('data_assessment.Rdata')
     ## This function does the aluminium exposure assessment. It estimates the expected value and 
     ## the highest posterior density of the probability of exceeding the threshold
      
-    unc_analysis_assessment_4_param <- function(niter_ale = 1000, niter_epi = 1000, 
+    unc_analysis_assessment_bp <- function(niter_ale = 1000, niter_epi = 1000, 
                                         threshold = 1, percentile_ale = NULL,
                                         suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
                                         concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
@@ -483,7 +483,7 @@ load('data_assessment.Rdata')
     }
   
     ### Usage
-    ## unc_analysis_assessment_4_param(niter_ale, niter_epi, threshold, percentile_ale,
+    ## unc_analysis_assessment_bp(niter_ale, niter_epi, threshold, percentile_ale,
     ##                         suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
     ##                         concentration_mu0, concentration_v0 = 5, concentration_alpha0, 
     ##                         concentration_beta0, sufficient_statistics_concentration,
@@ -544,10 +544,10 @@ load('data_assessment.Rdata')
     
     ### Description
     ### This is the objective function (a function to be optimized) 
-    ### The objective function is the unc_analysis_assessment_4_param function where 
+    ### The objective function is the unc_analysis_assessment_bp function where 
     ### concentration_mu0, consumption_mu0 and EKE_mu, EKE_sigma are the parameters and the rest of the inputs arguments are fixed.   
     
-    obj_func_4_param <- function(parameters, niter_ale = 1000, niter_epi = 1000,
+    obj_func_bp <- function(parameters, niter_ale = 1000, niter_epi = 1000,
                          threshold = 0.5, percentile_ale = NULL,
                          suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                          suff_stat_consumption = data_assessment$log_consumption_ss_data,
@@ -561,7 +561,7 @@ load('data_assessment.Rdata')
       EKE_mu <- parameters[3] 
       EKE_sigma <- parameters[4]  
       
-      out <- unc_analysis_assessment_4_param(niter_ale = niter_ale, niter_epi= niter_epi, 
+      out <- unc_analysis_assessment_bp(niter_ale = niter_ale, niter_epi= niter_epi, 
                                      threshold = threshold, percentile_ale = percentile_ale,
                                      suff_stat_concentration = suff_stat_concentration, 
                                      suff_stat_consumption = suff_stat_consumption,
@@ -581,11 +581,11 @@ load('data_assessment.Rdata')
     }
     
     ### Usage
-    ##  obj_func_4_param(parameters, niter_ale, niter_epi, threshold, percentile_ale,
-    ##                    suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
-    ##                    concentration_v0, concentration_alpha0, concentration_beta0, sufficient_statistics_concentration,
-    ##                    consumption_v0, consumption_alpha0, consumption_beta0, sufficient_statistics_consumption,
-    ##                    consumption_event_alpha0, consumption_event_beta0)
+    ##  obj_func_bp(parameters, niter_ale, niter_epi, threshold, percentile_ale,
+    ##              suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
+    ##              concentration_v0, concentration_alpha0, concentration_beta0, sufficient_statistics_concentration,
+    ##              consumption_v0, consumption_alpha0, consumption_beta0, sufficient_statistics_consumption,
+    ##              consumption_event_alpha0, consumption_event_beta0)
     
     
     ### Arguments
@@ -632,7 +632,7 @@ load('data_assessment.Rdata')
     ## is implemented in the 'nmkb' function from the {dfoptim} package. 
     ##  
     
-    bound_prob_exceed_4_param  <- function(obj_func_4_param, maximize = FALSE, 
+    bound_prob_exceed_bp  <- function(obj_func_bp, maximize = FALSE, 
                                            lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 1), 
                                            upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 1),
                                            niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
@@ -650,7 +650,7 @@ load('data_assessment.Rdata')
       
       initial_parameters <- c(concentration_mu0, consumption_mu0, EKE_mu, EKE_sigma)
       
-      opt_value <- nmkb(par = initial_parameters, fn = obj_func_4_param, lower = lower_parameters, upper = upper_parameters,
+      opt_value <- nmkb(par = initial_parameters, fn = obj_func_bp, lower = lower_parameters, upper = upper_parameters,
                         control = list(maximize =  maximize),
                         niter_ale = niter_ale, niter_epi = niter_epi, threshold = threshold, percentile_ale = percentile_ale,
                         suff_stat_concentration = suff_stat_concentration, suff_stat_consumption = suff_stat_consumption, 
@@ -662,7 +662,7 @@ load('data_assessment.Rdata')
                         consumption_event_alpha0 = consumption_event_alpha0, 
                         consumption_event_beta0 = consumption_event_beta0)
       
-      out_prob <- unc_analysis_assessment_4_param(niter_ale = niter_ale, niter_epi= niter_epi,  
+      out_prob <- unc_analysis_assessment_bp(niter_ale = niter_ale, niter_epi= niter_epi,  
                                      threshold = threshold, percentile_ale = percentile_ale,
                                      suff_stat_concentration = suff_stat_concentration,
                                      suff_stat_consumption = suff_stat_consumption,
@@ -680,7 +680,7 @@ load('data_assessment.Rdata')
     }
     
     ### Usage
-    ##  bound_prob_exceed_4_param(obj_func_4_param, maximize, 
+    ##  bound_prob_exceed_bp(obj_func_bp, maximize, 
     ##                            lower_parameters, upper_parameters,
     ##                            niter_ale, niter_epi, threshold, percentile_ale, 
     ##                            suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
@@ -694,7 +694,7 @@ load('data_assessment.Rdata')
     
     ### Arguments
     
-    ## obj_func_4_param                     The objective function to optimize.
+    ## bound_prob_exceed_bp                 The objective function to optimize.
     ## maximize                             A logical variable indicating whether the objective function should be maximized. Default is FALSE.
     ## lower_parameters                     Lower bounds on the parameters. A vector of the same length as the parameters.
     ## upper_parameters                     Upper bounds on the parameters. A vector of the same length as the parameters.
@@ -825,7 +825,7 @@ load('data_assessment.Rdata')
     ###################
     
     ## All population
-    lower_bound_prob4 = bound_prob_exceed_4_param (obj_func_4_param = obj_func_4_param, maximize = FALSE, 
+    lower_bound_prob4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
                                      lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 1), 
                                      upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 1),
                                      niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 0,
@@ -846,7 +846,7 @@ load('data_assessment.Rdata')
   
       
     ## All population
-    upper_bound_prob4 = bound_prob_exceed_4_param(obj_func_4_param = obj_func_4_param, maximize = TRUE, 
+    upper_bound_prob4 = bound_prob_exceed_bp(obj_func_bp = obj_func_bp, maximize = TRUE, 
                                      lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 0.5), 
                                      upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 0.5),
                                      niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 0,
@@ -867,7 +867,7 @@ load('data_assessment.Rdata')
     
     
     ## a high consumer
-    lower_bound_high_consumer4 = bound_prob_exceed_4_param (obj_func_4_param = obj_func_4_param, maximize = FALSE, 
+    lower_bound_high_consumer4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
                                      lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 1), 
                                      upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 1),
                                      niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 95,
@@ -888,7 +888,7 @@ load('data_assessment.Rdata')
     
     
     ## a high consumer
-    upper_bound_high_consumer4 = bound_prob_exceed_4_param(obj_func_4_param = obj_func_4_param, maximize = TRUE, 
+    upper_bound_high_consumer4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = TRUE, 
                                     lower_parameters  = c(1, -5, fit_normal_lower[['mean']], fit_normal_lower[['sd']] - 0.5), 
                                     upper_parameters  = c(6, 1,  fit_normal_upper[['mean']], fit_normal_upper[['sd']] + 0.5),
                                     niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 95,
