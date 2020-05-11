@@ -362,7 +362,9 @@ load('data_assessment.Rdata')
       labs(
         title = "Uncertainty",
         x = "Frequency of exceeding TWI",
-        y = "cdf")
+        y = "cdf") +
+      theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+    
   }
   
   ### Usage
@@ -371,6 +373,45 @@ load('data_assessment.Rdata')
   ### Arguments
   ## prob_exceed   a vector of probabilities of exceedance
   
+  ###################################################################################
+ 
+  ### Description
+  ## Plot two cumulative distribution functions: all children and a high consumer child.
+  ## prob_exceed_all and prob_exceed_high_consumer must have the same length
+  
+  graph_pp_both <- function(prob_exceed_all, prob_exceed_high_consumer){
+    
+    # data wide format
+    data_plot <- data.frame(prob_exceed_all = sort(prob_exceed_all), 
+                            prob_exceed_high_consumer = sort(prob_exceed_high_consumer), 
+                            prob_cdf = c(1:length(prob_exceed_all)/length(prob_exceed_all)))
+    
+    # data long format
+    data_plot <- gather(data_plot, group, values, prob_exceed_all, prob_exceed_high_consumer, factor_key = TRUE)
+    
+    p <- data_plot %>% 
+      ggplot(aes(x = values, y = prob_cdf, group = group, linetype = group)) +
+      geom_line() +
+      scale_linetype_manual(values = c('solid', 'dashed'), labels = c('All_children', 'High_consumer')) +
+      guides(linetype = guide_legend("Groups")) +
+      labs(
+        title = "Uncertainty",
+        x = "Frequency of exceeding TWI",
+        y = "cdf") +
+      theme(title = element_text(size = 15), 
+          axis.title = element_text(size = 15), axis.text = element_text(size = 15),
+          legend.title = element_text(size = 15),
+          legend.text = element_text(size = 15))
+     p
+  }
+  
+  ### Usage
+  ## graph_pp_both(prob_exceed_all, prob_exceed_high_consumer)
+  
+  ### Arguments
+  ## prob_exceed_all                      a vector of probabilities of exceedance corresponding to all children
+  ## prob_exceed_high_consumer            a vector of probabilities of exceedance corresponding to a high consumer child
+
 }
 
 #########################################################################################################################################
@@ -772,14 +813,16 @@ load('data_assessment.Rdata')
       }
       
       # data wide format
-      data_plot <- data.frame(l_points = sort(l_points), u_points = sort(u_points), cdf = c(1:length(l_points)/ length(l_points)))
-      x1 <-  data_plot[1,1]
-      x1_end <-   data_plot[1,2]
+      data_plot_wide <- data.frame(l_points = sort(l_points), 
+                                   u_points = sort(u_points), 
+                                   cdf = c(1:n_values / n_values))
       
-      x2 <-  tail(data_plot[,1], 1)
-      x2_end <- tail(data_plot[,2], 1)
+      app_data_plot <- data.frame(l_points= c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                                  u_points = c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                                  cdf=c(0,1))
       
-      prob_1 = 1 / length(l_points)
+      data_plot <- rbind(data_plot_wide, app_data_plot)
+      
       
       # data long format
       data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
@@ -792,15 +835,15 @@ load('data_assessment.Rdata')
         guides(color = guide_legend("Bounds")) +
         labs(
           title = "Uncertainty",
-          x = "Body weight",
+          x = "Frequency of exceeding TWI",
           y = "cdf")
+      p +
+      theme(title = element_text(size = 15), 
+            axis.title = element_text(size = 15), axis.text = element_text(size = 15),
+            legend.title = element_text(size = 15),
+            legend.text = element_text(size = 15))
       
       
-      p <- p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
-      p <- p + geom_segment(x = x1_end, y = 0, xend = x1_end, yend = prob_1, col = 'blue') 
-      p <- p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
-      p + geom_segment(x = x1, y = 0, xend = x1, yend = prob_1, col = 'red') 
-      #p + theme(legend.justification = c(1,0), legend.position = c(1,0))
     }
     
     
@@ -811,6 +854,80 @@ load('data_assessment.Rdata')
     ## lower_points               A vector with the lower cdf sequence
     ## upper_points               A vector with the upper cdf sequence
     
+    ###############################################################################################################
+    ###############################################################################################################
+    ###############################################################################################################
+    
+    ### Description
+    ## Plot two p-boxes (each p-box is represented by two cdf sequences)
+    ## All inputs much have the same length
+    
+    graph_bp_both <- function(lower_points_all, upper_points_all,
+                              lower_points_high_consumer, upper_points_high_consumer){
+      
+      n_values <- length(lower_points_all)
+      l_points_all <- rep(0,n_values)
+      u_points_all <- rep(0,n_values)
+      l_points_high_consumer <- rep(0,n_values)
+      u_points_high_consumer <- rep(0,n_values)
+      
+      for(i in 1:n_values){
+        l_points_all[i] <- min(lower_points_all[i],upper_points_all[i]) 
+        u_points_all[i] <- max(lower_points_all[i],upper_points_all[i])
+        
+        l_points_high_consumer[i] <- min(lower_points_high_consumer[i],upper_points_high_consumer[i]) 
+        u_points_high_consumer[i] <- max(lower_points_high_consumer[i],upper_points_high_consumer[i])
+      }
+      
+      # data wide format
+      data_plot_wide <- data.frame(l_points_all = sort(l_points_all), 
+                              u_points_all = sort(u_points_all), 
+                              l_points_high_consumer = sort(l_points_high_consumer), 
+                              u_points_high_consumer = sort(u_points_high_consumer),
+                              cdf = c(1:n_values / n_values))
+      
+      app_data_plot <- data.frame(l_points_all=c(min(data_plot_wide$l_points_all),max(data_plot_wide$u_points_all)),
+                                  u_points_all=c(min(data_plot_wide$l_points_all),max(data_plot_wide$u_points_all)),
+                                  l_points_high_consumer=c(min(data_plot_wide$l_points_high_consumer),max(data_plot_wide$u_points_high_consumer)),
+                                  u_points_high_consumer=c(min(data_plot_wide$l_points_high_consumer),max(data_plot_wide$u_points_high_consumer)),
+                                  cdf=c(0,1))
+      
+      data_plot <- rbind(data_plot_wide, app_data_plot)
+                                  
+      
+      # data long format
+      data_plot <- gather(data_plot, bound, values, l_points_all, u_points_all, 
+                          l_points_high_consumer, u_points_high_consumer, factor_key = TRUE)
+      
+      p <- data_plot %>% 
+        ggplot(aes(x = values, y = cdf, group = bound, color = bound, linetype = bound)) +
+        geom_line() +
+        scale_linetype_manual(values = c('solid', 'solid', 'dashed', 'dashed'),
+                              labels = c('Upper_all_children', 'Lower_all_children', 
+                                         'Upper_high_consumer','Lower_high_consumer')) +
+        scale_color_manual(values = c('red', 'blue','red', 'blue'),
+                              labels = c('Upper_all_children', 'Lower_all_children', 
+                                        'Upper_high_consumer','Lower_high_consumer')) +
+        labs(
+          title = "Uncertainty",
+          x = "Frequency of exceeding TWI",
+          y = "cdf") +
+        theme(title = element_text(size = 15), 
+              axis.title = element_text(size = 15), axis.text = element_text(size = 15),
+              legend.title = element_text(size = 15),
+              legend.text = element_text(size = 15))
+      p
+    }
+    
+    
+    ### Usage
+    ## graph_bp_both(lower_points_all, upper_points_all, lower_points_high_consumer, upper_points_high_consumer) 
+    
+    ### Arguments
+    ## lower_points_all               A vector with the lower cdf sequence corresponding to all children
+    ## upper_points_all               A vector with the upper cdf sequence corresponding to all children
+    ## lower_points_high_consumer     A vector with the lower cdf sequence corresponding to a high consumer child
+    ## upper_points_high_consumer     A vector with the lower cdf sequence corresponding to a high consumer child
    }
   
   ###############################################################################################################
@@ -922,6 +1039,9 @@ load('data_assessment.Rdata')
     load('TWI_pp_high_consumer.Rdata')
     graph_pp(prob_exceed = TWI_pp_high_consumer$prob_exceed)
     
+    ## both graphs
+    graph_pp_both(prob_exceed_all = TWI_pp$prob_exceed, prob_exceed_high_consumer = TWI_pp_high_consumer$prob_exceed )
+    
     ############################
     ## Bounded probability
     
@@ -934,6 +1054,13 @@ load('data_assessment.Rdata')
     load('lower_bound_high_consumer4.Rdata')
     load('upper_bound_high_consumer4.Rdata') 
     graph_bp(lower_points = lower_bound_high_consumer4$opt_prob$prob_exceed, upper_points = upper_bound_high_consumer4$opt_prob$prob_exceed)
+    
+    
+    ## Both graphs
+    graph_bp_both(lower_points_all = lower_bound_prob4$opt_prob$prob_exceed, 
+                  upper_points_all = upper_bound_prob4$opt_prob$prob_exceed,
+                  lower_points_high_consumer = lower_bound_high_consumer4$opt_prob$prob_exceed, 
+                  upper_points_high_consumer = upper_bound_high_consumer4$opt_prob$prob_exceed)
     
     #########################################################################################################################
     #########################################################################################################################

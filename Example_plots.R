@@ -53,8 +53,9 @@ p_cdf <- df_ale %>%
     title = "",
     x = "Body weight",
     y = "cdf"
-  )
-p_cdf
+  ) 
+p_cdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+
 
 ######################
 ## Parameter levels (mu)
@@ -77,7 +78,7 @@ p_pdf <- df_epi %>%
     x = "mu",
     y = "pdf"
   )
-p_pdf
+p_pdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 
 ## 1 pdf plot
@@ -91,7 +92,7 @@ p_pdf <- df_epi %>%
     x = "mu",
     y = "pdf"
   )
-p_pdf
+p_pdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 
 #####################################################
@@ -119,18 +120,18 @@ p_cdf_2 <- df_ale_2 %>%
     x = "Body weight",
     y = "cdf"
   )
-p_cdf_2
+p_cdf_2 + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 ## Parameter level (single point)
 sample_param_df_2 %>% 
   ggplot(aes(y = '', x = mu)) +
-  geom_point(size = 2, col = 'blue') + 
+  geom_point(size = 3, col = 'blue') + 
   labs(
     title = "",
     x = "mu",
     y = ""
-  )
-
+  ) +
+ theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 ####################################33
 ### Case 3 - P-boxes
@@ -167,14 +168,16 @@ graph_bp <- function(lower_points, upper_points){
   }
   
   # data wide format
-  data_plot <- data.frame(l_points = sort(l_points), u_points = sort(u_points), cdf = c(1:length(l_points)/ length(l_points)))
-  x1 <-  data_plot[1,1]
-  x1_end <-   data_plot[1,2]
+  data_plot_wide <- data.frame(l_points = sort(l_points), 
+                               u_points = sort(u_points), 
+                               cdf = c(1:n_values / n_values))
   
-  x2 <-  tail(data_plot[,1], 1)
-  x2_end <- tail(data_plot[,2], 1)
+  app_data_plot <- data.frame(l_points= c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                              u_points = c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                              cdf=c(0,1))
   
-  prob_1 = 1 / length(l_points)
+  data_plot <- rbind(data_plot_wide, app_data_plot)
+  
   
   # data long format
   data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
@@ -189,14 +192,9 @@ graph_bp <- function(lower_points, upper_points){
       title = "",
       x = "Body weight",
       y = "cdf")
-  
-  
-  p <- p + geom_segment(x = x1, y = 0, xend = x1_end, yend = 0, col = 'blue') 
-  p <- p + geom_segment(x = x1_end, y = 0, xend = x1_end, yend = prob_1, col = 'blue') 
-  
-  p <- p + geom_segment(x = x2, y = 1, xend = x2_end, yend = 1, col = 'red') 
-  p <- p + geom_segment(x = x1, y = 0, xend = x1, yend = prob_1, col = 'red') 
-  p + theme(legend.justification = c(1,0), legend.position = c(1,0))
+  p + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
+            legend.title = element_text(size = 15), legend.text = element_text(size = 15),
+            legend.justification =  'bottom', legend.position = c(0.9,0))
 }
 
 graph_bp(lower_points = df_ale_3_mu0_1$vals, upper_points = df_ale_3_mu0_2$vals)
@@ -212,6 +210,9 @@ sample_param_df_3_mu0 %>%
     title = "",
     x = "mu",
     y = ""
-  )
+  ) +
+theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+
+
 
  
