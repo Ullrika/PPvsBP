@@ -157,31 +157,32 @@ load('data_assessment.Rdata')
   ############################################################################
   
   ## Precise Probability EKE 
-  ## The fitted distribution is normal(-3.75, 16.679)
+  ## The fitted distribution is normal(-3.75, 16.679) (using the 25th and 75th percentiles)
   
   ### Description
   ## Estimate the parameters of a normal distribution using first and third quantiles 
-  
-  estimate_parameters_normal_dist <- function(sample_percentile_25, sample_percentile_75){
-    sigma = (sample_percentile_25 - sample_percentile_75) / (qnorm(0.25) - qnorm(0.75))
-    mu = sample_percentile_25 - qnorm(0.25) * sigma
+  estimate_parameters_normal_dist_from_two_percentiles <- function(vals, probs){
+    sigma = (vals[1] - vals[2]) / (qnorm(probs[1]) - qnorm(probs[2]))
+    mu = vals[1] - qnorm(probs[1]) * sigma
     #sigma2 = sigma^2
     return(normal_parameters = c(mu_EKE = mu, sigma_EKE = sigma))
   }
   
   ### Arguments
-  ## sample_percentile_25                   a value with the 25% percentile of the sample
-  ## sample_percentile_75                   a value with the 75% percentile of the sample
+  ## vals                   A vector of elicited values
+  ## probs                  A vector of elicited probabilies
   
   
   ### Usage
-  ## estimate_parameters_norm_dist(sample_percentile_25, sample_percentile_75)
+  ## estimate_parameters_normal_dist_from_two_percentiles(vals, probs)
   
   ### Details
   ## The parametric distribution is the Normal distribution
   
   ### Value
-  ## normal_parameters       a vector with the parameters mean and standard deviation of fitted normal distribution.
+  ## A vector with the parameters mean and standard deviation of fitted normal distribution.
+  ## mu_EKE 
+  ## sigma_EKE
   
   ##########################################################################################
   ##########################################################################################
@@ -232,7 +233,7 @@ load('data_assessment.Rdata')
   unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
                                       threshold = 1, percentile_ale = NULL,
                                       suff_stat_concentration, suff_stat_consumption, 
-                                      elicited_percentile_25, elicited_percentile_75, 
+                                      consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
                                       consumers_info_sample_size,
                                       concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                       concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -265,8 +266,8 @@ load('data_assessment.Rdata')
       parameters_consumption[[j]] <-  post_consumption[[j]]$param
     }
     
-    fit_normal_dist_EKE = estimate_parameters_normal_dist(sample_percentile_25 = elicited_percentile_25,
-                                                          sample_percentile_75 = elicited_percentile_75)
+    fit_normal_dist_EKE = estimate_parameters_normal_dist_from_two_percentiles(vals = consumption_change_vals_EKE, 
+                                                                               probs = consumption_change_probs_EKE)
     
     
     for(i in 1:niter_epi){
@@ -317,8 +318,8 @@ load('data_assessment.Rdata')
   ## suff_stat_consumption                a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
   ##                                      corresponding to consumption. If sufficient_statistics_consumption = FALSE, 
   ##                                      then it is vector of observed data 
-  ## elicited_percentile_25               a value with the elicited 25 percentile from experts
-  ## elicited_percentile_75               a value with the elicited 75 percentile from experts
+  ## consumption_change_vals_EKE          a vector of elicited values from experts
+  ## consumption_change_probs_EKE         a vector of elicited probabilities from experts
   ## consumers_info_sample_size           a vector with the sample size of non_consumer_sample_size and consumer_sample_size
   ## concentration_mu0                    prior hyperparameter mu0 for the normal-gamma distribution corresponding to concentration 
   ## concentration_v0                     prior hyperparameter v0 for the normal-gamma distribution corresponding to concentration 
@@ -432,8 +433,7 @@ load('data_assessment.Rdata')
                                      threshold = 1, percentile_ale = NULL,
                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                     elicited_percentile_25 = -15, 
-                                     elicited_percentile_75 = 7.5, 
+                                     consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                      concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                      concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -447,8 +447,7 @@ load('data_assessment.Rdata')
   TWI_pp_high_consumer <-  unc_analysis_assessment(niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 95,
                                                    suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                                                    suff_stat_consumption = data_assessment$log_consumption_ss_data, 
-                                                   elicited_percentile_25 = -15, 
-                                                   elicited_percentile_75 = 7.5, 
+                                                   consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
                                                    consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                                    concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                                    concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -464,19 +463,20 @@ load('data_assessment.Rdata')
   #########################################################################################################################################
   
   ## Bounded probability 
-  ## 4 parameters (concentration_mu0, consumption_mu0, elicited_percentile_25, elicited_percentile_75) 
+  ## 4 parameters (concentration_mu0, consumption_mu0, consumption_change_vals_EKE) 
   
   { 
     ### Description
     ## This is the objective function (a function to be optimized) 
     ## The objective function is the unc_analysis_assessment_bp function where 
-    ## concentration_mu0, consumption_mu0, elicited_percentile_25 and elicited_percentile_75
+    ## concentration_mu0, consumption_mu0 and consumption_change_vals_EKE
     ## are the parameters and the rest of the inputs arguments are fixed.   
     
     obj_func_bp <- function(parameters, niter_ale = 1000, niter_epi = 1000,
                             threshold = 1, percentile_ale = NULL,
                             suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                             suff_stat_consumption = data_assessment$log_consumption_ss_data,
+                            consumption_change_probs_EKE = c(0.25,0.75),
                             consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
                             concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
                             consumption_v0 = 5, consumption_alpha0 = 1, consumption_beta0 = 1, sufficient_statistics_consumption = TRUE,
@@ -484,16 +484,15 @@ load('data_assessment.Rdata')
       
       concentration_mu0 <- parameters[1] 
       consumption_mu0 <- parameters[2] 
-      elicited_percentile_25 <- parameters[3] 
-      elicited_percentile_75 <- parameters[4] 
+      consumption_change_vals_EKE <- parameters[3:4] 
       
       
       out <- unc_analysis_assessment(niter_ale = niter_ale, niter_epi= niter_epi, 
                                      threshold = threshold, percentile_ale = percentile_ale,
                                      suff_stat_concentration = suff_stat_concentration, 
                                      suff_stat_consumption = suff_stat_consumption,
-                                     elicited_percentile_25 = elicited_percentile_25, 
-                                     elicited_percentile_75 = elicited_percentile_75,
+                                     consumption_change_vals_EKE = consumption_change_vals_EKE, 
+                                     consumption_change_probs_EKE = consumption_change_probs_EKE,
                                      consumers_info_sample_size = consumers_info_sample_size, 
                                      concentration_mu0 = concentration_mu0, concentration_v0 = concentration_v0, 
                                      concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0,
@@ -511,7 +510,7 @@ load('data_assessment.Rdata')
     
     ### Usage
     ##  obj_func_bp(parameters, niter_ale, niter_epi, threshold, percentile_ale,
-    ##              suff_stat_concentration, suff_stat_consumption, consumers_info_sample_size,
+    ##              suff_stat_concentration, suff_stat_consumption, consumption_change_probs_EKE, consumers_info_sample_size,
     ##              concentration_v0, concentration_alpha0, concentration_beta0, sufficient_statistics_concentration,
     ##              consumption_v0, consumption_alpha0, consumption_beta0, sufficient_statistics_consumption,
     ##              consumption_event_alpha0, consumption_event_beta0)
@@ -519,7 +518,7 @@ load('data_assessment.Rdata')
     
     ### Arguments
     
-    ## parameters                           parameters of the objective function (concentration_mu0,consumption_mu0, elicited_percentile_25, elicited_percentile_75) 
+    ## parameters                           parameters of the objective function (concentration_mu0,consumption_mu0, consumption_change_vals_EKE) 
     ## niter_ale                            number of generated samples
     ## niter_epi                            number of generated parameters from the posterior distrbutions 
     ##                                      (it indicates the number of repetitions the assessment will be done)
@@ -531,6 +530,7 @@ load('data_assessment.Rdata')
     ## suff_stat_consumption                a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
     ##                                      corresponding to consumption. If sufficient_statistics_consumption = FALSE, 
     ##                                      then it is vector of observed data 
+    ## consumption_change_probs_EKE         a vector of elicited probabilities from experts
     ## consumers_info_sample_size           a vector with the sample size of non_consumer_sample_size and consumer_sample_size
     ## concentration_v0                     prior hyperparameter v0 for the normal-gamma distribution corresponding to concentration 
     ## concentration_alpha0                 prior hyperparameter alpha0 for the normal-gamma distribution  corresponding to concentration 
@@ -567,8 +567,8 @@ load('data_assessment.Rdata')
                                       niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                       suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                       suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                      elicited_percentile_25 = -15, 
-                                      elicited_percentile_75 = 7.5,
+                                      consumption_change_vals_EKE = c(-15, 7.5), 
+                                      consumption_change_probs_EKE = c(0.25,0.75),
                                       consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                       concentration_mu0 = 2.75,
                                       concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
@@ -578,12 +578,13 @@ load('data_assessment.Rdata')
                                       sufficient_statistics_consumption = TRUE,
                                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
       
-      initial_parameters <- c(concentration_mu0, consumption_mu0, elicited_percentile_25, elicited_percentile_75)
+      initial_parameters <- c(concentration_mu0, consumption_mu0, consumption_change_vals_EKE)
      
       opt_value <- nmkb(par = initial_parameters, fn = obj_func_bp, lower = lower_parameters, upper = upper_parameters,
                         control = list(maximize =  maximize),
                         niter_ale = niter_ale, niter_epi = niter_epi, threshold = threshold, percentile_ale = percentile_ale,
                         suff_stat_concentration = suff_stat_concentration, suff_stat_consumption = suff_stat_consumption, 
+                        consumption_change_probs_EKE = consumption_change_probs_EKE,
                         consumers_info_sample_size = consumers_info_sample_size, 
                         concentration_v0 = concentration_v0, concentration_alpha0 = concentration_alpha0,
                         concentration_beta0 = concentration_beta0, sufficient_statistics_concentration = sufficient_statistics_concentration,
@@ -597,8 +598,8 @@ load('data_assessment.Rdata')
                                           threshold = threshold, percentile_ale = percentile_ale,
                                           suff_stat_concentration = suff_stat_concentration,
                                           suff_stat_consumption = suff_stat_consumption,
-                                          elicited_percentile_25 = opt_value$par[3],
-                                          elicited_percentile_75 = opt_value$par[4],
+                                          consumption_change_vals_EKE = opt_value$par[3:4],
+                                          consumption_change_probs_EKE = consumption_change_probs_EKE,
                                           consumers_info_sample_size = consumers_info_sample_size, 
                                           concentration_mu0 = opt_value$par[1], concentration_v0 = concentration_v0, 
                                           concentration_alpha0 = concentration_alpha0, concentration_beta0 = concentration_beta0,
@@ -616,7 +617,7 @@ load('data_assessment.Rdata')
     ##                            lower_parameters, upper_parameters,
     ##                            niter_ale, niter_epi, threshold, percentile_ale, 
     ##                            suff_stat_concentration, suff_stat_consumption, 
-    ##                            elicited_percentile_25, elicited_percentile_75, consumers_info_sample_size,
+    ##                            consumption_change_vals_EKE, consumption_change_probs_EKE, consumers_info_sample_size,
     ##                            concentration_mu0, concentration_v0, concentration_alpha0, concentration_beta0,
     ##                            sufficient_statistics_concentration,
     ##                            consumption_mu0, consumption_v0, consumption_alpha0, consumption_beta0, 
@@ -641,8 +642,8 @@ load('data_assessment.Rdata')
     ## suff_stat_consumption                a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
     ##                                      corresponding to consumption. If sufficient_statistics_consumption = FALSE, 
     ##                                      then it is vector of observed data 
-    ## elicited_percentile_25               a value with the elicited 25 percentile from experts
-    ## elicited_percentile_75               a value with the elicited 75 percentile from experts
+    ## consumption_change_vals_EKE          a vector of elicited values from experts
+    ## consumption_change_probs_EKE         a vector of elicited probabilities from experts
     ## consumers_info_sample_size           a vector with the sample size of non_consumer_sample_size and consumer_sample_size
     ## concentration_mu0                    prior hyperparameter mu0 for the normal-gamma distribution corresponding to concentration 
     ## concentration_v0                     prior hyperparameter v0 for the normal-gamma distribution corresponding to concentration 
@@ -831,8 +832,8 @@ load('data_assessment.Rdata')
                                             niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                             suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                             suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                            elicited_percentile_25 = -15, 
-                                            elicited_percentile_75 = 7.5,
+                                            consumption_change_vals_EKE = c(-15, 7.5), 
+                                            consumption_change_probs_EKE = c(0.25, 0.75),
                                             consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                             concentration_mu0 = 2.75,
                                             concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
@@ -852,8 +853,8 @@ load('data_assessment.Rdata')
                                            niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                            suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                            suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                           elicited_percentile_25 = -15, 
-                                           elicited_percentile_75 = 7.5,
+                                           consumption_change_vals_EKE = c(-15, 7.5), 
+                                           consumption_change_probs_EKE = c(0.25, 0.75),
                                            consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                            concentration_mu0 = 2.75,
                                            concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
@@ -873,8 +874,8 @@ load('data_assessment.Rdata')
                                                      niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                                     elicited_percentile_25 = -15, 
-                                                     elicited_percentile_75 = 7.5,
+                                                     consumption_change_vals_EKE = c(-15, 7.5), 
+                                                     consumption_change_probs_EKE = c(0.25, 0.75),
                                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                                      concentration_mu0 = 2.75,
                                                      concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 
@@ -894,8 +895,8 @@ load('data_assessment.Rdata')
                                                      niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                                     elicited_percentile_25 = -15, 
-                                                     elicited_percentile_75 = 7.5,
+                                                     consumption_change_vals_EKE = c(-15, 7.5), 
+                                                     consumption_change_probs_EKE = c(0.25, 0.75),
                                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                                      concentration_mu0 = 2.75,
                                                      concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, 

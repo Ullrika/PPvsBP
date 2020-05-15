@@ -16,23 +16,30 @@ library(cowplot)
 ## Case 1 - 2D
 ## Variable level
 
-df <- data.frame(x = rnorm(n = 200,mean = 20, sd = sqrt(50)))
+## Description
+# A normal-normal conjugate model
+# X_i  ~ N(\mu, \simga2)   (Likelihood)
+# \mu|X  ~ N(\mu_0, \sigma2_0)  (Prior distribution)
+
+df <- data.frame(x = rnorm(n = 100, mean = 25, sd = sqrt(15)))
 sample_param <- function(data, sigma2, mu_0, sigma2_0){
   n <- length(data)
   
-  mu_n <- (1 / ((1/sigma2_0) + (n/sigma2)))*((mu_0 / sigma2_0) + sum(data)/sigma2)
   sigma2_n <- 1/((1 / sigma2_0) + (n/sigma2))
-  
+  #mu_n <- (1 / ((1/sigma2_0) + (n/sigma2)))*((mu_0 / sigma2_0) + sum(data)/sigma2)
+  mu_n <- sigma2_n *((mu_0 / sigma2_0) + sum(data)/sigma2)
+   
   mu <- rnorm(1,mean = mu_n, sd = sqrt(sigma2_n))
-  pred_data <- rnorm(1, mean = mu, sd = sqrt(sigma2))
-  return(list(mu = mu, sigma = sqrt(sigma2_n), sigma2 = sigma2,  pred_data = pred_data ))
+ #postpred_data <- rnorm(1, mean = mu_n, sd = sqrt(sigma2 + sigma2_n))
+  return(list(mu = mu, sigma = sqrt(sigma2_n), sigma2 = sigma2, mu_n = mu_n, sigma2_n = sigma2_n))
 }
 
-#Update the parameter (posterior distribution) and generate a predictive data 
+
+#Update the parameter (posterior distribution)  
 ndraws <- 20 ## number of spaghetti straws
 sample_param_df <- map_dfr(seq(ndraws), 
                            ~sample_param(data = df$x,
-                                         sigma2 = sqrt(50), mu_0 = 25, sigma2_0 = sqrt(20))) %>% 
+                                         sigma2 = 10, mu_0 = 30, sigma2_0 = 5)) %>% 
   tibble::rownames_to_column(var=".iter")
 
 
@@ -53,21 +60,66 @@ p_cdf <- df_ale %>%
     title = "",
     x = "Body weight",
     y = "cdf"
-  ) 
-p_cdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+  ) + 
+  theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+  p_cdf 
 
-
+ #####################################################
+  ### Different dataframes
+  
+  df_ale <- sample_param_df  %>% 
+    mutate(q=map2(mu, sigma2, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+                                      vals=qnorm(qs, mean=.x, sd=.y),
+                                      ds=dnorm(vals, mean=.x, sd=.y)))
+    ) %>% unnest(q)
+  
+  
+  ## Posterior predictive
+  
+  sample_param_df_2 <- map_dfr(1, 
+                               ~sample_param(data = df$x,
+                                             sigma2 = 10, mu_0 = 25, sigma2_0 = 5)) 
+  
+  
+  df_ale_2 <- sample_param_df_2  %>% 
+    mutate(q=map2(mu_n, sigma2 + sigma2_n, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+                                                   vals=qnorm(qs, mean=.x, sd=.y),
+                                                   ds=dnorm(vals, mean=.x, sd=.y)))
+    ) %>% unnest(q)
+  
+  
+  ## Plot 2D and posterior predictive 
+  
+  p_cdf_together <- df_ale %>% 
+    mutate(grp = .iter) %>% 
+    ggplot(aes(group=grp, x=vals, y=qs)) +
+    geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="grey50")+
+    stat_ecdf(data = df, aes(x = x, y = NULL, group=NULL, color = "empirical cdf data"), pad = TRUE ) + ## adds the empirical cdf for data
+    geom_line(data = df_ale_2, aes(x = vals, y = qs, group = NULL, color = "posterior predictive"), size=1.5, alpha=0.5, ) +  ## adds the cdf of the posterior predictive distribution
+    coord_cartesian(expand = FALSE) +
+    scale_colour_manual(name = '', values = c("black", 'brown'), labels = c('empirical cdf data', 'posterior predictive')) +
+    labs(
+      title = "",
+      x = "Body weight",
+      y = "cdf"
+    ) + 
+    theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
+          legend.text = element_text(size = 15),
+          legend.justification =  'bottom', legend.position = c(0.8,0))
+  p_cdf_together 
+  
+  
 ######################
 ## Parameter levels (mu)
 
 # 2 d plots 
 df_epi <- sample_param_df  %>% 
-  mutate(q=map2(mu, sigma2, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+  mutate(q=map2(mu_n, sigma2_n, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                     vals=qnorm(qs, mean=.x, sd=.y),
                                     ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
-
+## pdf plot
 p_pdf <- df_epi %>%
   mutate(grp = .iter) %>% 
   ggplot(aes(group=grp, x=vals, y=ds)) +
@@ -81,30 +133,16 @@ p_pdf <- df_epi %>%
 p_pdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 
-## 1 pdf plot
-p_pdf <- df_epi %>%
-  mutate(grp = .iter) %>% 
-  ggplot(aes(group=grp, x=vals, y=ds)) +
-  geom_line(data=. %>% filter(.iter == 1) %>% select(-.iter), size=1, color="blue")+
-  coord_cartesian(expand = FALSE) +
-  labs(
-    title = "",
-    x = "mu",
-    y = "pdf"
-  )
-p_pdf + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
-
-
 #####################################################
-## Case 2 - Posterior predictive data_pred ~ N(mu_n, sigma_n + sigma2)
+## Case 2 - Posterior predictive data_pred ~ N(mu_n, sigma2_n + sigma2)
 ## CDF plot
 
 sample_param_df_2 <- map_dfr(1, 
                            ~sample_param(data = df$x,
-                                         sigma2 = sqrt(50), mu_0 = 25, sigma2_0 = sqrt(20))) 
+                                         sigma2 = 10, mu_0 = 25, sigma2_0 = 5)) 
   
 df_ale_2 <- sample_param_df_2  %>% 
-  mutate(q=map2(mu, sigma + sigma2, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+  mutate(q=map2(mu_n, sigma2 + sigma2_n, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                    vals=qnorm(qs, mean=.x, sd=.y),
                                    ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
@@ -113,25 +151,27 @@ df_ale_2 <- sample_param_df_2  %>%
 p_cdf_2 <- df_ale_2 %>% 
   # mutate(grp = .iter) %>% 
   ggplot(aes(x=vals, y=qs)) +
-  geom_line(size=1.2, color="black") +
+  geom_line(size=1.2, color="brown") +
   coord_cartesian(expand = FALSE) +
   labs(
     title = "",
     x = "Body weight",
     y = "cdf"
-  )
-p_cdf_2 + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+  ) + 
+  theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+p_cdf_2 
+
 
 ## Parameter level (single point)
-sample_param_df_2 %>% 
-  ggplot(aes(y = '', x = mu)) +
-  geom_point(size = 3, col = 'blue') + 
-  labs(
-    title = "",
-    x = "mu",
-    y = ""
-  ) +
- theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+# sample_param_df_2 %>% 
+#  ggplot(aes(y = '', x = mu)) +
+#  geom_point(size = 3, col = 'blue') + 
+#  labs(
+#    title = "",
+#    x = "mu",
+#    y = ""
+#  ) +
+# theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 ####################################33
 ### Case 3 - P-boxes
