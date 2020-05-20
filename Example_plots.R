@@ -309,7 +309,55 @@ df_epi_mu_n2 <- sample_param_df_3_mu_n2  %>%
   ) %>% unnest(q)
 
 
-## pdf plot
+###################################
+### p-box plot parameter mu_n
+
+graph_bp_parameter <- function(lower_points, upper_points){
+  
+  n_values <- length(lower_points)
+  l_points <- rep(0,n_values)
+  u_points <- rep(0,n_values)
+  
+  for(i in 1:n_values){
+    l_points[i] <- min(lower_points[i],upper_points[i]) 
+    u_points[i] <- max(lower_points[i],upper_points[i])
+  }
+  
+  # data wide format
+  data_plot_wide <- data.frame(l_points = sort(l_points), 
+                               u_points = sort(u_points), 
+                               cdf = c(1:n_values / n_values))
+  
+  app_data_plot <- data.frame(l_points= c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                              u_points = c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
+                              cdf=c(0,1))
+  
+  data_plot <- rbind(data_plot_wide, app_data_plot)
+  
+  
+  # data long format
+  data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
+  
+  
+  p <- data_plot %>% 
+    ggplot(aes(x = values, y = cdf, group = bound, col = bound)) +
+    geom_line() +
+    scale_color_manual(labels = c('Upper', 'Lower'), values = c('red', 'blue')) +
+    guides(color = guide_legend("Bounds")) +
+    labs(
+      title = "",
+      x = "mu",
+      y = "cdf")
+  p + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
+            legend.title = element_text(size = 15), legend.text = element_text(size = 15),
+            legend.justification =  'bottom', legend.position = c(0.9,0))
+}
+
+graph_bp_parameter(lower_points = df_epi_mu_n1 $vals, upper_points = df_epi_mu_n2$vals)
+
+
+################################
+## pdf plot parameter mu_n
 p_pdf_rba <- df_epi_mu_n1 %>%
   ggplot(aes(x = vals, y = ds, color = "blue")) +
   geom_line(size = 1) +
@@ -325,6 +373,4 @@ p_pdf_rba <- df_epi_mu_n1 %>%
         legend.text = element_text(size = 15),
         legend.justification =  'bottom', legend.position = c(0.9,0.5))
 p_pdf_rba 
-
-
  
