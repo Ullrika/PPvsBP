@@ -356,21 +356,5 @@ graph_bp_parameter <- function(lower_points, upper_points){
 graph_bp_parameter(lower_points = df_epi_mu_n1 $vals, upper_points = df_epi_mu_n2$vals)
 
 
-################################
-## pdf plot parameter mu_n
-p_pdf_rba <- df_epi_mu_n1 %>%
-  ggplot(aes(x = vals, y = ds, color = "blue")) +
-  geom_line(size = 1) +
-  geom_line(data = df_epi_mu_n2, aes(x = vals, y = ds, color = "red"), size = 1) +
-  coord_cartesian(expand = FALSE) +
-  scale_colour_manual(name = '', values = c('blue', 'red'),  labels = c('mu_lower', 'mu_upper')) +
-  labs(
-    title = "",
-    x = "mu",
-    y = "pdf"
-  ) +
-  theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
-        legend.text = element_text(size = 15),
-        legend.justification =  'bottom', legend.position = c(0.9,0.5))
-p_pdf_rba 
+
  

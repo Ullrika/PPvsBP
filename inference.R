@@ -138,7 +138,6 @@ load('data_assessment.Rdata')
     return(output)
   }  
   
-  
   ###Usage
   ## generate_samples_normal_gamma(niter_ale, post, percentile_ale = NULL)
   
@@ -157,7 +156,47 @@ load('data_assessment.Rdata')
   ############################################################################
   
   ## Precise Probability EKE 
-  ## The fitted distribution is normal(-3.75, 16.679) (using the 25th and 75th percentiles)
+  ## The fitted distribution is normal(-4.414, 14,854)
+  
+  ### Description
+  ## Takes elicited probabilities as inputs, and fits a normal distribution using least squares on 
+  ## the cumulative distribution function. If separate judgements from multiple experts are specified,
+  ## the function will fit one set of distributions per expert.
+  
+  quantify_uncertainty_pp_change_eke <- function(vals, probs){
+    l <- length(vals)
+    change_cocoa_dist <- SHELF::fitdist(vals = vals[2:(l-1)], probs = probs[2:(l-1)], lower = min(vals), upper = max(vals))
+    
+    #param <- c(mean = change_cocoa_dist$Normal$mean, sd = change_cocoa_dist$Normal$sd)
+    
+    return(normal_parameters = c(mu_EKE = change_cocoa_dist$Normal$mean, sigma_EKE = change_cocoa_dist$Normal$sd))
+  }
+  
+  ### Usage 
+  ## quantify_uncertainty_pp_change_eke(vals, probs)
+  
+  
+  ### Arguments
+  ## vals     A vector of elicited values for one expert, or a matrix of elicited values for multiple 
+  ##          experts (one column per expert). Note that the an elicited judgement about X should be of the form P(X<= vals[i,j]) = probs[i,j]
+  ## probs    A vector of elicited probabilies for one expert, or a matrix of elicited values for multiple 
+  ##          experts (one column per expert). A single vector can be used if the probabilities are the same 
+  ##          for each expert. For each expert, the smallest elicited probability must be less than 0.4, 
+  ##          and the largest elicited probability must be greater than 0.6.
+  
+  
+  ### Details
+  ## The parametric distribution is the Normal distribution
+  
+  ### Value
+  ## A vector with the parameters mean and standard deviation of fitted normal distribution.
+  ## mu_EKE 
+  ## sigma_EKE
+  
+  ############################################################################
+  
+  ## Bounded Probability EKE 
+  ## The fitted distribution is normal (using the 25th and 75th percentiles)
   
   ### Description
   ## Estimate the parameters of a normal distribution using first and third quantiles 
@@ -174,7 +213,7 @@ load('data_assessment.Rdata')
   
   
   ### Usage
-  ## estimate_parameters_normal_dist_from_two_percentiles(vals, probs)
+  ## bp_estimate_parameters_normal_dist_from_two_percentiles(vals, probs)
   
   ### Details
   ## The parametric distribution is the Normal distribution
@@ -229,11 +268,12 @@ load('data_assessment.Rdata')
   ### Description
   ## This function does the aluminium exposure assessment. It estimates the expected value and 
   ## the highest posterior density of the probability of exceeding the threshold
-
+  
   unc_analysis_assessment <- function(niter_ale = 1000, niter_epi = 1000, 
                                       threshold = 1, percentile_ale = NULL,
                                       suff_stat_concentration, suff_stat_consumption, 
-                                      consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
+                                      consumption_change_vals_EKE, 
+                                      consumption_change_probs_EKE, 
                                       consumers_info_sample_size,
                                       concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                       concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -266,9 +306,11 @@ load('data_assessment.Rdata')
       parameters_consumption[[j]] <-  post_consumption[[j]]$param
     }
     
-    fit_normal_dist_EKE = estimate_parameters_normal_dist_from_two_percentiles(vals = consumption_change_vals_EKE, 
-                                                                               probs = consumption_change_probs_EKE)
+    # fit_normal_dist_EKE <- estimate_parameters_normal_dist_from_two_percentiles(vals = consumption_change_vals_EKE, 
+    #                                                                          probs = consumption_change_probs_EKE)
     
+    fit_normal_dist_EKE <- quantify_uncertainty_pp_change_eke(vals = consumption_change_vals_EKE, 
+                                                              probs = consumption_change_probs_EKE)
     
     for(i in 1:niter_epi){
       
@@ -305,6 +347,7 @@ load('data_assessment.Rdata')
   ##                         consumption_beta0, sufficient_statistics_consumption,
   ##                         consumption_event_alpha0, consumption_event_beta0)
 
+  
   ### Arguments
   
   ## niter_ale                            number of generated samples
@@ -433,7 +476,8 @@ load('data_assessment.Rdata')
                                      threshold = 1, percentile_ale = NULL,
                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
-                                     consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
+                                     consumption_change_vals_EKE = data_assessment$change_cons$vals, 
+                                     consumption_change_probs_EKE = data_assessment$change_cons$probs/100,
                                      consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                      concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                      concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -447,7 +491,8 @@ load('data_assessment.Rdata')
   TWI_pp_high_consumer <-  unc_analysis_assessment(niter_ale = 5000, niter_epi = 5000, threshold = 1, percentile_ale = 95,
                                                    suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                                                    suff_stat_consumption = data_assessment$log_consumption_ss_data, 
-                                                   consumption_change_vals_EKE = c(-15, 7.5), consumption_change_probs_EKE = c(0.25,0.75), 
+                                                   consumption_change_vals_EKE = data_assessment$change_cons$vals, 
+                                                   consumption_change_probs_EKE = data_assessment$change_cons$probs/100, 
                                                    consumers_info_sample_size = data_assessment$consumers_info_sample_size,
                                                    concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
                                                    concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -466,6 +511,138 @@ load('data_assessment.Rdata')
   ## 4 parameters (concentration_mu0, consumption_mu0, consumption_change_vals_EKE) 
   
   { 
+    
+   ## Assessment model -- Bounded Probability 
+   ## (the difference respect to the precise probability is that a normal distribution is fitted to the elicited 
+   ##  values from experts using two percentiles and by specifying bounds on the lower percentile.)
+    
+    ### Description
+    ## This function does the aluminium exposure assessment. It estimates the expected value and 
+    ## the highest posterior density of the probability of exceeding the threshold
+    
+    unc_analysis_assessment_bp <- function(niter_ale = 1000, niter_epi = 1000, 
+                                        threshold = 1, percentile_ale = NULL,
+                                        suff_stat_concentration, suff_stat_consumption, 
+                                        consumption_change_vals_EKE, 
+                                        consumption_change_probs_EKE, 
+                                        consumers_info_sample_size,
+                                        concentration_mu0 = 3.5, concentration_v0 = 5, concentration_alpha0 = 1, 
+                                        concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
+                                        consumption_mu0 = -3, consumption_v0 = 5, consumption_alpha0 = 1, 
+                                        consumption_beta0 = 1, sufficient_statistics_consumption = TRUE,
+                                        consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
+      
+      nr_products <-  length(suff_stat_concentration)
+      prob_consumption <- parameters_consumption <- parameters_concentration <- vector('list', nr_products)
+      
+      # Probability of a child i consumes chocolate product k
+      param_consumption <-  lapply(consumers_info_sample_size, update_bernoulli_beta, alpha0 = consumption_event_alpha0, beta0 = consumption_event_beta0)
+      
+      for(k in 1:nr_products){
+        prob_consumption[[k]] <-  rbeta(1,shape1 = param_consumption[[k]]$param$posterior$alpha, shape2 = param_consumption[[k]]$param$posterior$beta)
+      }
+      
+      prob_exceed <- rep(0, niter_epi)
+      
+      post_concentration <-  lapply(suff_stat_concentration, update_normal_gamma, mu0 = concentration_mu0,
+                                    v0 = concentration_v0, alpha0 = concentration_alpha0, 
+                                    beta0 = concentration_beta0, sufficient_statistics = sufficient_statistics_concentration)
+      
+      post_consumption <-  lapply(suff_stat_consumption, update_normal_gamma, mu0 = consumption_mu0, 
+                                  v0 = consumption_v0, alpha0 = consumption_alpha0, 
+                                  beta0 = consumption_beta0, sufficient_statistics = sufficient_statistics_consumption)
+      for(j in 1:nr_products){
+        parameters_concentration[[j]] <-  post_concentration[[j]]$param
+        
+        parameters_consumption[[j]] <-  post_consumption[[j]]$param
+      }
+      
+      fit_normal_dist_EKE <- estimate_parameters_normal_dist_from_two_percentiles(vals = consumption_change_vals_EKE, 
+                                                                                probs = consumption_change_probs_EKE)
+      
+      for(i in 1:niter_epi){
+        
+        gen_data_concentration <-  lapply(post_concentration, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = NULL)
+        
+        gen_data_consumption <-  lapply(post_consumption, generate_samples_normal_gamma, niter_ale = niter_ale, percentile_ale = percentile_ale)
+        
+        gen_data_EKE = rnorm(1, mean =  fit_normal_dist_EKE[[1]], sd =  fit_normal_dist_EKE[[2]])
+        
+        prob_exceed[[i]] <- combine_uncertainty(gen_data_concentration =  gen_data_concentration, gen_data_consumption = gen_data_consumption, 
+                                                gen_data_EKE = gen_data_EKE, threshold =  threshold, niter_ale = niter_ale)
+        
+      }
+      
+      expected_prob_exceed <- mean(prob_exceed)
+      hdi_prob_exceed <- hdi(prob_exceed, credMass = 0.95) # Highest (Posterior) Density Interval
+      
+      return(list(prob_consumption_event = prob_consumption,
+                  parameters_concentration = parameters_concentration,
+                  parameters_consumption = parameters_consumption,
+                  prob_exceed = prob_exceed, 
+                  expected_prob_exceed = expected_prob_exceed,
+                  hdi_prob_exceed = hdi_prob_exceed))
+    }
+    
+    ### Usage
+    ## unc_analysis_assessment_bp(niter_ale, niter_epi, threshold, percentile_ale,
+    ##                         suff_stat_concentration, suff_stat_consumption, 
+    ##                         consumption_change_vals_EKE, consumption_change_probs_EKE, 
+    ##                         consumers_info_sample_size,
+    ##                         concentration_mu0, concentration_v0 = 5, concentration_alpha0, 
+    ##                         concentration_beta0, sufficient_statistics_concentration,
+    ##                         consumption_mu0, consumption_v0 = 5, consumption_alpha0, 
+    ##                         consumption_beta0, sufficient_statistics_consumption,
+    ##                         consumption_event_alpha0, consumption_event_beta0)
+    
+    
+    ### Arguments
+    
+    ## niter_ale                            number of generated samples
+    ## niter_epi                            number of generated parameters from the posterior distrbutions 
+    ##                                      (it indicates the number of repetitions the assessment will be done)
+    ## threshold                            safety threshold
+    ## percentile_ale                       a value that indicates if the assessment is done on all population by NULL or on a high consumer child by 95. Default is NULL
+    ## suff_stat_concentration              a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
+    ##                                      corresponding to concentration. If sufficient_statistics_concentration = FALSE, 
+    ##                                      then it is vector of observed data
+    ## suff_stat_consumption                a vector of sufficient statistics: sample_size, sample_mean and sample_sd 
+    ##                                      corresponding to consumption. If sufficient_statistics_consumption = FALSE, 
+    ##                                      then it is vector of observed data 
+    ## consumption_change_vals_EKE          a vector of elicited values from experts
+    ## consumption_change_probs_EKE         a vector of elicited probabilities from experts
+    ## consumers_info_sample_size           a vector with the sample size of non_consumer_sample_size and consumer_sample_size
+    ## concentration_mu0                    prior hyperparameter mu0 for the normal-gamma distribution corresponding to concentration 
+    ## concentration_v0                     prior hyperparameter v0 for the normal-gamma distribution corresponding to concentration 
+    ## concentration_alpha0                 prior hyperparameter alpha0 for the normal-gamma distribution  corresponding to concentration 
+    ## concentration_beta0                  prior hyperparameter beta0 for the normal-gamma distribution corresponding to concentration 
+    ## sufficient_statistics_concentration  logical; if TRUE, sufficient statistics (sample_size, sample_mean, sample_variance) 
+    ##                                      corresponding to concentration are given as input data, otherwise 
+    ##                                      sufficient_statistics_concentration is given as observed data. Default is TRUE
+    ## consumption_mu0                      prior hyperparameter mu0 for the normal-gamma distribution corresponding to consumption
+    ## consumption_v0                       prior hyperparameter v0 for the normal-gamma distribution corresponding to consumption
+    ## consumption_alpha0                   prior hyperparameter alpha0 for the normal-gamma distribution corresponding to consumption 
+    ## consumption_beta0                    prior hyperparameter beta0 for the normal-gamma distribution corresponding to consumption 
+    ## sufficient_statistics_consumption    logical; if TRUE, sufficient statistics (sample_size, sample_mean, sample_variance) 
+    ##                                      corresponding to consumption are given as input data, otherwise 
+    ##                                      sufficient_statistics_consumption is given as observed data. Default is TRUE
+    ## consumption_event_alpha0             prior hyperparameter alpha0 for the beta distribution corresponding to consumption event
+    ## consumption_event_beta0              prior hyperparameter beta0 for the beta distribution corresponding to consumption event
+    
+    ### Value
+    
+    ## prob_consumption_event    the estimated probability of consumption events
+    ## parameters_concentration  a list with the values of the prior and posterior parameters of concentration
+    ## parameters_consumption    a list with the prior and posterior parameters of consumption
+    ## prob_exceed               a vector with the estimated probabilities of exceeding the threshold (the lenght is niter_epi)
+    ## expected_prob_exceed      the expected value of the probability of exceeding the threshold
+    ## hdi_prob_exceed           the highest posterior density interval of the probability of exceeding the threshold
+    
+    
+    ############################################################################################
+    ############################################################################################
+    ############################################################################################ 
+    
     ### Description
     ## This is the objective function (a function to be optimized) 
     ## The objective function is the unc_analysis_assessment_bp function where 
@@ -476,6 +653,7 @@ load('data_assessment.Rdata')
                             threshold = 1, percentile_ale = NULL,
                             suff_stat_concentration = data_assessment$log_concentration_ss_data, 
                             suff_stat_consumption = data_assessment$log_consumption_ss_data,
+                            consumption_change_vals_EKE = 7.5, 
                             consumption_change_probs_EKE = c(0.25,0.75),
                             consumers_info_sample_size = data_assessment$consumers_info_sample_size, 
                             concentration_v0 = 5, concentration_alpha0 = 1, concentration_beta0 = 1, sufficient_statistics_concentration = TRUE,
@@ -484,10 +662,10 @@ load('data_assessment.Rdata')
       
       concentration_mu0 <- parameters[1] 
       consumption_mu0 <- parameters[2] 
-      consumption_change_vals_EKE <- parameters[3:4] 
+      consumption_change_vals_EKE <- c(parameters[3], consumption_change_vals_EKE) 
       
       
-      out <- unc_analysis_assessment(niter_ale = niter_ale, niter_epi= niter_epi, 
+      out <- unc_analysis_assessment_bp(niter_ale = niter_ale, niter_epi= niter_epi, 
                                      threshold = threshold, percentile_ale = percentile_ale,
                                      suff_stat_concentration = suff_stat_concentration, 
                                      suff_stat_consumption = suff_stat_consumption,
@@ -510,7 +688,7 @@ load('data_assessment.Rdata')
     
     ### Usage
     ##  obj_func_bp(parameters, niter_ale, niter_epi, threshold, percentile_ale,
-    ##              suff_stat_concentration, suff_stat_consumption, consumption_change_probs_EKE, consumers_info_sample_size,
+    ##              suff_stat_concentration, suff_stat_consumption, consumption_change_vals_EKE, consumption_change_probs_EKE, consumers_info_sample_size,
     ##              concentration_v0, concentration_alpha0, concentration_beta0, sufficient_statistics_concentration,
     ##              consumption_v0, consumption_alpha0, consumption_beta0, sufficient_statistics_consumption,
     ##              consumption_event_alpha0, consumption_event_beta0)
@@ -518,7 +696,7 @@ load('data_assessment.Rdata')
     
     ### Arguments
     
-    ## parameters                           parameters of the objective function (concentration_mu0,consumption_mu0, consumption_change_vals_EKE) 
+    ## parameters                           parameters of the objective function (concentration_mu0, consumption_mu0, consumption_change_vals_EKE) 
     ## niter_ale                            number of generated samples
     ## niter_epi                            number of generated parameters from the posterior distrbutions 
     ##                                      (it indicates the number of repetitions the assessment will be done)
@@ -562,8 +740,8 @@ load('data_assessment.Rdata')
     ##  
     
     bound_prob_exceed_bp  <- function(obj_func_bp, maximize = FALSE, 
-                                      lower_parameters  = c(1, -5, -20, 2.5), 
-                                      upper_parameters  = c(6, 1, -10, 12.5),
+                                      lower_parameters  = c(1, -5, -20), 
+                                      upper_parameters  = c(6, 1, -10),
                                       niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                       suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                       suff_stat_consumption = data_assessment$log_consumption_ss_data,
@@ -578,12 +756,13 @@ load('data_assessment.Rdata')
                                       sufficient_statistics_consumption = TRUE,
                                       consumption_event_alpha0 = 1, consumption_event_beta0 = 1){
       
-      initial_parameters <- c(concentration_mu0, consumption_mu0, consumption_change_vals_EKE)
+      initial_parameters <- c(concentration_mu0, consumption_mu0, consumption_change_vals_EKE[1])
      
       opt_value <- nmkb(par = initial_parameters, fn = obj_func_bp, lower = lower_parameters, upper = upper_parameters,
                         control = list(maximize =  maximize),
                         niter_ale = niter_ale, niter_epi = niter_epi, threshold = threshold, percentile_ale = percentile_ale,
                         suff_stat_concentration = suff_stat_concentration, suff_stat_consumption = suff_stat_consumption, 
+                        consumption_change_vals_EKE = consumption_change_vals_EKE[2],
                         consumption_change_probs_EKE = consumption_change_probs_EKE,
                         consumers_info_sample_size = consumers_info_sample_size, 
                         concentration_v0 = concentration_v0, concentration_alpha0 = concentration_alpha0,
@@ -594,11 +773,11 @@ load('data_assessment.Rdata')
                         consumption_event_beta0 = consumption_event_beta0)
       
       
-      out_prob <- unc_analysis_assessment(niter_ale = niter_ale, niter_epi= niter_epi,  
+      out_prob <- unc_analysis_assessment_bp(niter_ale = niter_ale, niter_epi= niter_epi,  
                                           threshold = threshold, percentile_ale = percentile_ale,
                                           suff_stat_concentration = suff_stat_concentration,
                                           suff_stat_consumption = suff_stat_consumption,
-                                          consumption_change_vals_EKE = opt_value$par[3:4],
+                                          consumption_change_vals_EKE = c(opt_value$par[3],consumption_change_vals_EKE[2]),
                                           consumption_change_probs_EKE = consumption_change_probs_EKE,
                                           consumers_info_sample_size = consumers_info_sample_size, 
                                           concentration_mu0 = opt_value$par[1], concentration_v0 = concentration_v0, 
@@ -824,11 +1003,10 @@ load('data_assessment.Rdata')
   ##################################################################################################################################
   ##################################################################################################################################
   
-  
   ## All population
   lower_bound_prob4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
-                                            lower_parameters  = c(1, -5, -20, 2.5), 
-                                            upper_parameters  = c(6, 1, -10, 12.5),
+                                            lower_parameters  = c(1, -5, -20), 
+                                            upper_parameters  = c(6, 1, -10),
                                             niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                             suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                             suff_stat_consumption = data_assessment$log_consumption_ss_data,
@@ -848,8 +1026,8 @@ load('data_assessment.Rdata')
   
   ## All population
   upper_bound_prob4 = bound_prob_exceed_bp(obj_func_bp = obj_func_bp, maximize = TRUE, 
-                                           lower_parameters  = c(1, -5, -20, 2.5), 
-                                           upper_parameters  = c(6, 1, -10, 12.5),
+                                           lower_parameters  = c(1, -5, -20), 
+                                           upper_parameters  = c(6, 1, -10),
                                            niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
                                            suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                            suff_stat_consumption = data_assessment$log_consumption_ss_data,
@@ -869,8 +1047,8 @@ load('data_assessment.Rdata')
   
   ## a high consumer
   lower_bound_high_consumer4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
-                                                     lower_parameters  = c(1, -5, -20, 2.5), 
-                                                     upper_parameters  = c(6, 1, -10, 12.5),
+                                                     lower_parameters  = c(1, -5, -20), 
+                                                     upper_parameters  = c(6, 1, -10),
                                                      niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
@@ -890,8 +1068,8 @@ load('data_assessment.Rdata')
   
   ## a high consumer
   upper_bound_high_consumer4 = bound_prob_exceed_bp(obj_func_bp = obj_func_bp, maximize = TRUE, 
-                                                     lower_parameters  = c(1, -5, -20, 2.5), 
-                                                     upper_parameters  = c(6, 1, -10, 12.5),
+                                                     lower_parameters  = c(1, -5, -20), 
+                                                     upper_parameters  = c(6, 1, -10),
                                                      niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
