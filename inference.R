@@ -1,7 +1,7 @@
 ##########
 # Code for paper comparing precise to bounded probability 
 # Ivette Raices Cruz, Matthias C M Troffaes, Ullrika Sahlin
-# 12 May 2020
+# 27 May 2020
 
 ########################
 library(SHELF)
@@ -508,7 +508,7 @@ load('data_assessment.Rdata')
   #########################################################################################################################################
   
   ## Bounded probability 
-  ## 4 parameters (concentration_mu0, consumption_mu0, consumption_change_vals_EKE) 
+  ## 3 parameters (concentration_mu0, consumption_mu0, consumption_change_vals_EKE) 
   
   { 
     
@@ -1007,7 +1007,7 @@ load('data_assessment.Rdata')
   lower_bound_prob4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
                                             lower_parameters  = c(1, -5, -20), 
                                             upper_parameters  = c(6, 1, -10),
-                                            niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
+                                            niter_ale = 2000, niter_epi = 2000, threshold = 1, percentile_ale = NULL,
                                             suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                             suff_stat_consumption = data_assessment$log_consumption_ss_data,
                                             consumption_change_vals_EKE = c(-15, 7.5), 
@@ -1028,7 +1028,7 @@ load('data_assessment.Rdata')
   upper_bound_prob4 = bound_prob_exceed_bp(obj_func_bp = obj_func_bp, maximize = TRUE, 
                                            lower_parameters  = c(1, -5, -20), 
                                            upper_parameters  = c(6, 1, -10),
-                                           niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = NULL,
+                                           niter_ale = 2000, niter_epi = 2000, threshold = 1, percentile_ale = NULL,
                                            suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                            suff_stat_consumption = data_assessment$log_consumption_ss_data,
                                            consumption_change_vals_EKE = c(-15, 7.5), 
@@ -1049,7 +1049,7 @@ load('data_assessment.Rdata')
   lower_bound_high_consumer4 = bound_prob_exceed_bp (obj_func_bp = obj_func_bp, maximize = FALSE, 
                                                      lower_parameters  = c(1, -5, -20), 
                                                      upper_parameters  = c(6, 1, -10),
-                                                     niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
+                                                     niter_ale = 2000, niter_epi = 2000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
                                                      consumption_change_vals_EKE = c(-15, 7.5), 
@@ -1070,7 +1070,7 @@ load('data_assessment.Rdata')
   upper_bound_high_consumer4 = bound_prob_exceed_bp(obj_func_bp = obj_func_bp, maximize = TRUE, 
                                                      lower_parameters  = c(1, -5, -20), 
                                                      upper_parameters  = c(6, 1, -10),
-                                                     niter_ale = 1000, niter_epi = 1000, threshold = 1, percentile_ale = 95,
+                                                     niter_ale = 2000, niter_epi = 2000, threshold = 1, percentile_ale = 95,
                                                      suff_stat_concentration = data_assessment$log_concentration_ss_data,
                                                      suff_stat_consumption = data_assessment$log_consumption_ss_data,
                                                      consumption_change_vals_EKE = c(-15, 7.5), 
