@@ -32,7 +32,9 @@ sample_param <- function(data, sigma2, mu_0, sigma2_0){
   
   mu <- rnorm(1,mean = mu_n, sd = sqrt(sigma2_n))
   #return(list(mu = mu, sigma = sqrt(sigma2_n), sigma2 = sigma2, mu_n = mu_n, sigma2_n = sigma2_n))
-  return(list(mu = mu, sigma2 = sigma2, mu_n = mu_n, sigma2_n = sigma2_n))
+  return(list(mu = mu, sigma2 = sigma2, 
+              mu_n = mu_n, sigma2_n = sigma2_n, 
+              mu_0 = mu_0, sigma2_0 = sigma2_0))
 }
 
 
@@ -116,26 +118,47 @@ p_cdf_together
 ######################
 ## Parameter levels (mu)
 
-# 2 d plots 
+# 2d plots  - posterior mu 
 df_epi <- sample_param_df  %>% 
   mutate(q=map2(mu_n, sqrt(sigma2_n), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                               vals=qnorm(qs, mean=.x, sd=.y),
                                               ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
-## pdf plot
+## cdf plot - posterior mu 
 p_cdf <- df_epi %>%
   mutate(grp = .iter) %>% 
   ggplot(aes(group=grp, x=vals, y=qs)) +
   geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="blue")+
   coord_cartesian(expand = FALSE) +
-  xlim(14, 31) +
+  xlim(9, 41) +
   labs(
     title = "",
-    x = "mu",
+    x = expression(mu),
     y = "cdf"
   )
 p_cdf + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
+
+# 2 d plots - prior mu
+df_epi_prior <- sample_param_df  %>% 
+  mutate(q=map2(mu_0, sqrt(sigma2_0), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+                                              vals=qnorm(qs, mean=.x, sd=.y),
+                                              ds=dnorm(vals, mean=.x, sd=.y)))
+  ) %>% unnest(q)
+
+## cdf plot - prior mu 
+p_cdf_prior <- df_epi_prior %>%
+  mutate(grp = .iter) %>% 
+  ggplot(aes(group=grp, x=vals, y=qs)) +
+  geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="blue")+
+  coord_cartesian(expand = FALSE) +
+  xlim(8, 42) +
+  labs(
+    title = "",
+    x = expression(mu),
+    y = "cdf"
+  )
+p_cdf_prior + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
 
 
 #####################################################
@@ -252,10 +275,10 @@ pp <- data_sample_param_df_3_mu0_param_pbox %>%
   geom_line() +
   scale_color_manual(labels = c('Upper', 'Lower'), values = c('red', 'blue')) +
   guides(color = guide_legend("Bounds")) +
-  xlim(15, 32) +
+  xlim(10, 40) +
   labs(
     title = "",
-    x = "mu",
+    x = expression(mu),
     y = "cdf")
 pp + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
                         legend.title = element_text(size = 15), legend.text = element_text(size = 15),
@@ -274,15 +297,18 @@ pp + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = elemen
 
 mu_01 <- 20
 mu_02 <- 30
+sigma2_0 <- 5
 
 post1 <- sample_param(data = df$x, sigma2 = 10, mu_0 = mu_01, sigma2_0 = 5)
 
 post2 <- sample_param(data = df$x, sigma2 = 10, mu_0 = mu_02, sigma2_0 = 5)
 
 ## Posterior predictive dist
-sample_param_df_3_mu_n1 <- data.frame(mu_n = post1$mu_n, sigma2_n = post1$sigma2_n, sigma2 = post1$sigma2)
+sample_param_df_3_mu_n1 <- data.frame(mu_n = post1$mu_n, sigma2_n = post1$sigma2_n, sigma2 = post1$sigma2,
+                                      mu_01 = post1$mu_0, sigma2_0 = post1$sigma2_0)
 
-sample_param_df_3_mu_n2 <- data.frame(mu_n = post2$mu_n, sigma2_n = post2$sigma2_n, sigma2 = post2$sigma2)
+sample_param_df_3_mu_n2 <- data.frame(mu_n = post2$mu_n, sigma2_n = post2$sigma2_n, sigma2 = post2$sigma2,
+                                      mu_02 = post2$mu_0, sigma2_0 = post2$sigma2_0)
 
 df_ale_3_mu_n1 <- sample_param_df_3_mu_n1  %>% 
   mutate(q=map2(mu_n, sqrt(sigma2_n + sigma2), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
@@ -300,14 +326,30 @@ graph_bp(lower_points = df_ale_3_mu_n1$vals, upper_points = df_ale_3_mu_n2$vals,
 
 # Parameter level (set of priors)
 
+## posterior mu
+
 df_epi_mu_n1 <- sample_param_df_3_mu_n1   %>% 
-  mutate(q=map2(mu_n, sigma2_n, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+  mutate(q=map2(mu_n, sqrt(sigma2_n), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                         vals=qnorm(qs, mean=.x, sd=.y),
                                         ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
 df_epi_mu_n2 <- sample_param_df_3_mu_n2  %>% 
-  mutate(q=map2(mu_n, sigma2_n, ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+  mutate(q=map2(mu_n, sqrt(sigma2_n), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+                                        vals=qnorm(qs, mean=.x, sd=.y),
+                                        ds=dnorm(vals, mean=.x, sd=.y)))
+  ) %>% unnest(q)
+
+
+## prior mu
+df_epi_mu_01 <- sample_param_df_3_mu_n1   %>% 
+  mutate(q=map2(mu_01, sqrt(sigma2_0), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
+                                        vals=qnorm(qs, mean=.x, sd=.y),
+                                        ds=dnorm(vals, mean=.x, sd=.y)))
+  ) %>% unnest(q)
+
+df_epi_mu_02 <- sample_param_df_3_mu_n2  %>% 
+  mutate(q=map2(mu_02, sqrt(sigma2_0), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                         vals=qnorm(qs, mean=.x, sd=.y),
                                         ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
@@ -350,7 +392,7 @@ graph_bp_parameter <- function(lower_points, upper_points, xlim){
     xlim(xlim[1], xlim[2]) +
     labs(
       title = "",
-      x = "mu",
+      x = expression(mu),
       y = "cdf")
   p + theme_bw() +
     theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
@@ -358,7 +400,11 @@ graph_bp_parameter <- function(lower_points, upper_points, xlim){
           legend.justification =  'bottom', legend.position = c(0.9,0))
 }
 
-graph_bp_parameter(lower_points = df_epi_mu_n1 $vals, upper_points = df_epi_mu_n2$vals, xlim = c(15, 31))
+graph_bp_parameter(lower_points = df_epi_mu_n1 $vals, upper_points = df_epi_mu_n2$vals, xlim = c(10, 40))
+
+
+### p-box plot parameter prior mu (mu_0)
+graph_bp_parameter(lower_points = df_epi_mu_01 $vals, upper_points = df_epi_mu_02$vals, xlim = c(10, 40))
 
 
 
