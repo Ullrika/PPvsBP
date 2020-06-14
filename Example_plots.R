@@ -22,7 +22,7 @@ library(cowplot)
 # \mu|X   ~ N(\mu_n, \sigma2_n)  (Posterior distribution)
 # x_new|X ~ N(\mu_n, \sigma2_n + sigma2) (Posterior predictive distribution)
 
-df <- data.frame(x = rnorm(n = 20, mean = 20, sd = sqrt(15)))
+df <- data.frame(x = rnorm(n = 10, mean = 20, sd = sqrt(15)))
 sample_param <- function(data, sigma2, mu_0, sigma2_0){
   n <- length(data)
   
@@ -39,7 +39,7 @@ sample_param <- function(data, sigma2, mu_0, sigma2_0){
 
 
 #Update the parameter (posterior distribution)  
-ndraws <- 20 ## number of spaghetti straws
+ndraws <- 10 ## number of spaghetti straws
 sample_param_df <- map_dfr(seq(ndraws), 
                            ~sample_param(data = df$x,
                                          sigma2 = 10, mu_0 = 25, sigma2_0 = 5)) %>% 
@@ -60,6 +60,7 @@ p_cdf <- df_ale %>%
   #stat_ecdf(data = df, aes(x = x, y = NULL, group=NULL), pad = TRUE) + ## adds the empirical cdf for data
   coord_cartesian(expand = FALSE) +
   xlim(9, 41) +
+  ylim(0,1) + 
   labs(
     title = "",
     x = "Body weight",
@@ -70,7 +71,7 @@ p_cdf <- df_ale %>%
 p_cdf 
 
 #####################################################
-### Different dataframes
+### Different data frames
 
 df_ale <- sample_param_df  %>% 
   mutate(q=map2(mu, sqrt(sigma2), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
@@ -91,18 +92,21 @@ df_ale_2 <- sample_param_df_2  %>%
                                                        ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
-
+# extract one iteration from df_ale (for plotting)
+df_ale_1 <- df_ale[df_ale$.iter == 1,]
+df_ale_0 <- df_ale[df_ale$.iter != 1,]
 ## Plot 2D distribution and posterior predictive distribution
 
-p_cdf_together <- df_ale %>% 
+p_cdf_together <- df_ale_0 %>% 
   mutate(grp = .iter) %>% 
   ggplot(aes(group=grp, x=vals, y=qs)) +
-  geom_line(data=. %>% select(-.iter), size =  1, alpha = 0.2, color = "grey50", show.legend = FALSE) + 
-  geom_line(data = df_ale_2, aes(x = vals, y = qs, group = NULL, color = 'red'), size = 1) +  ## adds the cdf of the posterior predictive distribution
-  geom_line(data = df_ale %>% filter(.iter == 1), aes(x = vals, y = qs, group = NULL, color = 'grey50'), size = 1) +  ## adds one more plot
+  geom_line(data = . %>% select(-.iter), size =  1, alpha = 0.2, color = "grey30", show.legend = FALSE) + 
+  geom_line(data = df_ale_2, aes(x = vals, y = qs, group = NULL, color = "red"), size = 1) +  ## adds the cdf of the posterior predictive distribution
+  geom_line(data = df_ale_1, aes(x = vals, y = qs, group = NULL,  color = "grey30"), size = 1,alpha = 0.2) +  ## adds one more plot
   coord_cartesian(expand = FALSE) +
-  scale_colour_manual(name = '', values = c('grey50', 'red'),  labels = c('2D distribution', 'Posterior predictive distribution')) +
-  xlim(9, 41) +
+  scale_colour_manual(name = '', values = c('grey30', 'red'),  labels = c('2D distribution', 'Predictive distribution')) +
+  xlim(9, 41) + 
+  ylim(0,1) + 
   labs(
     title = "",
     x = "Body weight",
@@ -132,6 +136,7 @@ p_cdf <- df_epi %>%
   geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="blue")+
   coord_cartesian(expand = FALSE) +
   xlim(9, 41) +
+  ylim(0,1) + 
   labs(
     title = "",
     x = expression(mu),
@@ -153,6 +158,7 @@ p_cdf_prior <- df_epi_prior %>%
   geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="blue")+
   coord_cartesian(expand = FALSE) +
   xlim(8, 42) +
+  ylim(0,1) + 
   labs(
     title = "",
     x = expression(mu),
@@ -182,6 +188,7 @@ p_cdf_2 <- df_ale_2 %>%
   geom_line(size=1.2, color="red") +
   coord_cartesian(expand = FALSE) +
   xlim(9, 41) +
+  ylim(0,1) + 
   labs(
     title = "",
     x = "Body weight",
@@ -276,6 +283,7 @@ pp <- data_sample_param_df_3_mu0_param_pbox %>%
   scale_color_manual(labels = c('Upper', 'Lower'), values = c('red', 'blue')) +
   guides(color = guide_legend("Bounds")) +
   xlim(10, 40) +
+  ylim(0,1) + 
   labs(
     title = "",
     x = expression(mu),
