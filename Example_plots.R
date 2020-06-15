@@ -189,8 +189,8 @@ graph_prior_posterior_mu <- function(mu_0_vals, mu_n_vals, qs){
     scale_linetype_manual(name = '', values = c('dashed','solid'), labels = c( 'Prior','Posterior')) +
     xlim(10, 40) + 
     labs(
-      title = "Uncertainty",
-      x = "Frequency of exceeding TWI",
+      title = "",
+      x = expression(mu),
       y = "cdf") +
     theme_bw() +
     theme(title = element_text(size = 15), 
@@ -585,11 +585,11 @@ df_ale_mu_02 <- sample_param_df_mu_02 %>%
 p_cdf_mu_02 <- df_ale_mu_02%>% 
   mutate(grp = .iter) %>% 
   ggplot(aes(group=grp, x=vals, y=qs)) +
-  geom_line(data=. %>% select(-.iter), size=1, alpha=0.5, color="grey50")+
+  geom_line(data=. %>% select(-.iter), size=1, alpha=0.5, color="lightblue")+
   geom_line(data = df_ale_mu_01 %>% 
               mutate(grp = .iter) %>% 
               select(-.iter), aes(group=grp, x=vals, y=qs),
-            size=1, alpha=0.2, color="grey20") +
+            size=1, alpha=0.2, color="lightpink") +
     #stat_ecdf(data = df, aes(x = x, y = NULL, group=NULL), pad = TRUE) + ## adds the empirical cdf for data
   coord_cartesian(expand = FALSE) +
   xlim(5, 41) +
