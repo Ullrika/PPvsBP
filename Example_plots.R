@@ -38,7 +38,7 @@ sample_param <- function(data, sigma2, mu_0, sigma2_0){
 }
 
 
-#Update the parameter (posterior distribution)  
+#Update the parameter (posterior distribution)
 ndraws <- 10 ## number of spaghetti straws
 sample_param_df <- map_dfr(seq(ndraws), 
                            ~sample_param(data = df$x,
@@ -53,25 +53,6 @@ df_ale <- sample_param_df  %>%
                                           ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
-p_cdf <- df_ale %>% 
-  mutate(grp = .iter) %>% 
-  ggplot(aes(group=grp, x=vals, y=qs)) +
-  geom_line(data=. %>% select(-.iter), size=1, alpha=0.2, color="grey50")+
-  #stat_ecdf(data = df, aes(x = x, y = NULL, group=NULL), pad = TRUE) + ## adds the empirical cdf for data
-  coord_cartesian(expand = FALSE) +
-  xlim(5, 41) +
-  ylim(0,1) + 
-  labs(
-    title = "",
-    x = "Body weight",
-    y = "cdf"
-  ) + 
-  theme_bw() +
-  theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
-p_cdf 
-
-#####################################################
-### Different data frames
 
 df_ale <- sample_param_df  %>% 
   mutate(q=map2(mu, sqrt(sigma2), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
@@ -95,6 +76,7 @@ df_ale_2 <- sample_param_df_2  %>%
 # extract one iteration from df_ale (for plotting)
 df_ale_1 <- df_ale[df_ale$.iter == 1,]
 df_ale_0 <- df_ale[df_ale$.iter != 1,]
+
 ## Plot 2D distribution and posterior predictive distribution
 
 p_cdf_together <- df_ale_0 %>% 
@@ -119,8 +101,9 @@ p_cdf_together <- df_ale_0 %>%
 p_cdf_together 
 
 ## var_2d_postpred
-ggsave('var_2d_postpred.png', scale = 1.5)
+ggsave('var_2d_postpred.png', width = 20, height = 20, units = 'cm')
 
+##############################################################################
 ######################
 ## Parameter levels (mu)
 
@@ -131,45 +114,12 @@ df_epi <- sample_param_df  %>%
                                               ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
 
-## cdf plot - posterior mu 
-p_cdf <- df_epi %>%
- # mutate(grp = .iter) %>% 
- # ggplot(aes(group=grp, x=vals, y=qs)) +
-  ggplot(aes(x=vals, y=qs)) +
-  geom_line(data=. %>% select(-.iter), size=1, color="blue")+
-  coord_cartesian(expand = FALSE) +
-  xlim(9, 41) +
-  ylim(0,1) + 
-  labs(
-    title = "",
-    x = expression(mu),
-    y = "cdf"
-  )
-p_cdf + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
-
 # 2d plots - prior mu
 df_epi_prior <- sample_param_df  %>% 
   mutate(q=map2(mu_0, sqrt(sigma2_0), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
                                               vals=qnorm(qs, mean=.x, sd=.y),
                                               ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
-
-## cdf plot - prior mu 
-p_cdf_prior <- df_epi_prior %>%
- # mutate(grp = .iter) %>% 
- # ggplot(aes(group=grp, x=vals, y=qs)) +
-  ggplot(aes(x=vals, y=qs)) +
-  geom_line(data=. %>% select(-.iter), size=1, color="blue") +
-  coord_cartesian(expand = FALSE) +
-  xlim(8, 42) +
-  ylim(0,1) + 
-  labs(
-    title = "",
-    x = expression(mu),
-    y = "cdf"
-  )
-p_cdf_prior + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
-
 
 ## cdf plot - prior and posterior mu 
 graph_prior_posterior_mu <- function(mu_0_vals, mu_n_vals, qs){
@@ -211,40 +161,9 @@ plot_prior_post_mu <- graph_prior_posterior_mu(mu_0_vals =  df_epi_prior_mu_0$va
 plot_prior_post_mu
 
 ## param_2d_postpred
-ggsave('param_2d_postpred.png', scale = 1.5)
+ggsave('param_2d_postpred.png', width = 20, height = 20, units = 'cm')
 
-#####################################################
-## Case 2 - Posterior predictive data_pred ~ N(mu_n, sigma2_n + sigma2)
-## CDF plot
-
-sample_param_df_2 <- map_dfr(1, 
-                             ~sample_param(data = df$x,
-                                           sigma2 = 10, mu_0 = 25, sigma2_0 = 5)) 
-
-df_ale_2 <- sample_param_df_2  %>% 
-  mutate(q=map2(mu_n, sqrt(sigma2 + sigma2_n), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
-                                                       vals=qnorm(qs, mean=.x, sd=.y),
-                                                       ds=dnorm(vals, mean=.x, sd=.y)))
-  ) %>% unnest(q)
-
-
-p_cdf_2 <- df_ale_2 %>% 
-  # mutate(grp = .iter) %>% 
-  ggplot(aes(x=vals, y=qs)) +
-  geom_line(size=1.2, color="red") +
-  coord_cartesian(expand = FALSE) +
-  xlim(5, 41) +
-  ylim(0,1) + 
-  labs(
-    title = "",
-    x = "Body weight",
-    y = "cdf"
-  ) + 
-  theme_bw() +
-  theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15))
-p_cdf_2 
-
-#######################################
+##################################################################################
 ### Case 3 - P-boxes
 
 graph_bp <- function(lower_points, upper_points, xlim){
@@ -315,7 +234,7 @@ pbox_plot <- graph_bp(lower_points = df_ale_3_mu0_1$vals, upper_points = df_ale_
 pbox_plot
 
 ## var_pbox
-png("var_pbox.png")
+png("var_pbox.png", width = 20, res = 300, height = 20, units = 'cm')
 pbox_plot 
 dev.off()
 
@@ -344,9 +263,9 @@ pp + theme_bw() + theme(axis.title = element_text(size = 30), axis.text = elemen
                         legend.justification =  'bottom', legend.position = c(0.90,0.1))
 
 ## param_pbox
-ggsave('param_pbox.png', scale = 1.5)
+ggsave('param_pbox.png', width = 20, height = 20, units = 'cm')
 
-###################################################################################
+#######################################################################################
 ### Case 4 - Set of priors 
 ## Variable level 
 # A normal-normal conjugate model
@@ -372,21 +291,6 @@ sample_param_df_3_mu_n1 <- data.frame(mu_n = post1$mu_n, sigma2_n = post1$sigma2
 
 sample_param_df_3_mu_n2 <- data.frame(mu_n = post2$mu_n, sigma2_n = post2$sigma2_n, sigma2 = post2$sigma2,
                                       mu_02 = post2$mu_0, sigma2_0 = post2$sigma2_0)
-
-df_ale_3_mu_n1 <- sample_param_df_3_mu_n1  %>% 
-  mutate(q=map2(mu_n, sqrt(sigma2_n + sigma2), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
-                                                       vals=qnorm(qs, mean=.x, sd=.y),
-                                                       ds=dnorm(vals, mean=.x, sd=.y)))
-  ) %>% unnest(q)
-
-df_ale_3_mu_n2 <- sample_param_df_3_mu_n2  %>% 
-  mutate(q=map2(mu_n, sqrt(sigma2_n + sigma2), ~tibble(qs=c(0.001, seq(0.01, 0.99, by=0.01), 0.999),
-                                                       vals=qnorm(qs, mean=.x, sd=.y),
-                                                       ds=dnorm(vals, mean=.x, sd=.y)))
-  ) %>% unnest(q)
-
-graph_bp(lower_points = df_ale_3_mu_n1$vals, upper_points = df_ale_3_mu_n2$vals, xlim = c(10,40))
-
 
 # Parameter level (set of priors)
 
@@ -417,58 +321,6 @@ df_epi_mu_02 <- sample_param_df_3_mu_n2  %>%
                                         vals=qnorm(qs, mean=.x, sd=.y),
                                         ds=dnorm(vals, mean=.x, sd=.y)))
   ) %>% unnest(q)
-
-
-###################################
-### p-box plot parameter mu_n
-graph_bp_parameter <- function(lower_points, upper_points, xlim){
-  
-  n_values <- length(lower_points)
-  l_points <- rep(0,n_values)
-  u_points <- rep(0,n_values)
-  
-  for(i in 1:n_values){
-    l_points[i] <- min(lower_points[i],upper_points[i]) 
-    u_points[i] <- max(lower_points[i],upper_points[i])
-  }
-  
-  # data wide format
-  data_plot_wide <- data.frame(l_points = sort(l_points), 
-                               u_points = sort(u_points), 
-                               cdf = c(1:n_values / n_values))
-  
-  app_data_plot <- data.frame(l_points= c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
-                              u_points = c(min(data_plot_wide$l_points),max(data_plot_wide$u_points)),
-                              cdf=c(0,1))
-  
-  data_plot <- rbind(data_plot_wide, app_data_plot)
-  
-  
-  # data long format
-  data_plot <- gather(data_plot, bound, values, l_points, u_points, factor_key = TRUE)
-  
-  
-  p <- data_plot %>% 
-    ggplot(aes(x = values, y = cdf, group = bound, col = bound)) +
-    geom_line() +
-    scale_color_manual(labels = c('Upper', 'Lower'), values = c('red', 'blue')) +
-    guides(color = guide_legend("Bounds")) +
-    xlim(xlim[1], xlim[2]) +
-    labs(
-      title = "",
-      x = expression(mu),
-      y = "cdf")
-  p + theme_bw() +
-    theme(axis.title = element_text(size = 30), axis.text = element_text(size = 15), 
-          legend.title = element_text(size = 15), legend.text = element_text(size = 15),
-          legend.justification =  'bottom', legend.position = c(0.9,0))
-}
-
-graph_bp_parameter(lower_points = df_epi_mu_n1$vals, upper_points = df_epi_mu_n2$vals, xlim = c(10, 40))
-
-
-### p-box plot parameter prior mu (mu_0)
-graph_bp_parameter(lower_points = df_epi_mu_01 $vals, upper_points = df_epi_mu_02$vals, xlim = c(10, 40))
 
 
 ## p-box plot posterior and prior mu
@@ -545,13 +397,15 @@ plot_rba_mu <- graph_bp_both(lower_points_mu_0 = df_epi_mu_01$vals,
 plot_rba_mu 
 
 ## param_rba
-png("param_rba.png")
+png("param_rba.png", width = 20, res = 300, height = 20, units = 'cm')
 plot_rba_mu 
 dev.off()
 
 
-#####################################################
+##########################################################################
+## Variable rba 
 #Update the parameter (posterior distribution)  
+
 ndraws <- 10 ## number of spaghetti straws
 ## prior mu_0 = 20
 sample_param_df_mu_01 <- map_dfr(seq(ndraws), 
@@ -604,5 +458,5 @@ p_cdf_mu_02 <- df_ale_mu_02%>%
 p_cdf_mu_02 
 
 ## variable rba
-ggsave('var_rba.png', scale = 1.5)
+ggsave('var_rba.png', width = 20, height = 20, units = 'cm')
 
